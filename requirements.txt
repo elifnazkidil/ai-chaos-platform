@@ -1,0 +1,8 @@
+psutil==5.9.8
+requests==2.31.0
+fastapi
+uvicorn
+numpy
+scikit-learn
+torch
+matplotlib
