@@ -1,9 +1,11 @@
-# 🛡️ FinTech YSA Destekli Bellek Sızıntısı Tahmin ve Dayanıklılık Platformu
+# FinTech YSA Destekli Bellek Sızıntısı Tahmin ve Dayanıklılık Platformu
 > **AI-Driven Chaos Engineering, Memory Leak Forecasting & Automatic ERP Resilience Engine**
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?style=for-the-badge&logo=fastapi)
 ![PyTorch](https://img.shields.io/badge/PyTorch-AI--Engine-EE4C2C?style=for-the-badge&logo=pytorch)
+![YSA](https://img.shields.io/badge/YSA-AnomalyMLP-8A2BE2?style=for-the-badge&logo=tensorflow)
+![Qwen](https://img.shields.io/badge/LLM-Qwen%202.5%20%2F%20Ollama-FF6B35?style=for-the-badge&logo=openai)
 ![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?style=for-the-badge&logo=streamlit)
 ![Clean Architecture](https://img.shields.io/badge/Architecture-Clean--Architecture-success?style=for-the-badge)
 
