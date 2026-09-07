@@ -112,7 +112,7 @@ streamlit run dashboard/app.py
 ---
 
 ## 📜 Lisans (License)
-MIT License © 2026 - FinTech Resilience & AI Lab.
+MIT License © 2026 Naz
 
 ---
 
