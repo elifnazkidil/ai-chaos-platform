@@ -42,3 +42,8 @@ Thumbs.db
 # Env dosyalari (gizli anahtarlar)
 .env
 *.env
+
+# Kisisel planlama dosyalari (sadece yerel kalsin)
+*.pdf
+gun*.md
+generate_pdf.py
