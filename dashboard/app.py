@@ -1,7 +1,7 @@
 """
 dashboard/app.py
 
-4. Hafta: Streamlit FinTech Web Dashboard (Gün 22-28)
+4. Hafta: Streamlit FinTech Web Dashboard
 ======================================================
 Çalıştırma: streamlit run dashboard/app.py
 FastAPI sunucusu: uvicorn server.api.main:app --reload (opsiyonel, DB fallback var)
@@ -14,9 +14,11 @@ import pandas as pd
 import requests
 import plotly.graph_objects as go
 import plotly.express as px
-from streamlit_autorefresh import st_autorefresh  # Gün 28
+from streamlit_autorefresh import st_autorefresh  
 
-# ── Sayfa Yapılandırması ────────────────────────────────────────
+
+
+
 st.set_page_config(
     page_title="AI Chaos Platform - FinTech Dashboard",
     page_icon="🤖",
@@ -24,7 +26,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Gün 28: time.sleep+st.rerun yerine st_autorefresh — 5sn'de bir yeniler, sayfa donmaz
+#  time.sleep+st.rerun yerine st_autorefresh — 5sn'de bir yeniler, sayfa donmaz
 st_autorefresh(interval=5000, key="dashboard_autorefresh")
 
 # ── Sabitler ───────────────────────────────────────────────────
@@ -41,7 +43,7 @@ def get_db_connection():
     return sqlite3.connect(DB_PATH)
 
 
-# Gün 24: FastAPI /api/v1/metrics/latest'ten veri çekme
+#  FastAPI /api/v1/metrics/latest'ten veri çekme
 @st.cache_data(ttl=5)
 def get_metrics_from_api(limit: int = 100) -> pd.DataFrame:
     """
@@ -89,7 +91,7 @@ def get_work_orders() -> pd.DataFrame:
     return df
 
 
-# Gün 25: /api/v1/predictions endpoint'inden YSA tahminleri
+# /api/v1/predictions endpoint'inden YSA tahminleri
 @st.cache_data(ttl=5)
 def get_predictions() -> list:
     """FastAPI /api/v1/predictions'tan YSA tahminlerini çeker."""
@@ -102,7 +104,7 @@ def get_predictions() -> list:
     return []
 
 
-# Gün 26: event_logs'u API'den çek
+#event_logs'u API'den çek
 @st.cache_data(ttl=5)
 def get_event_logs() -> pd.DataFrame:
     """self-healing event_logs'u FastAPI üzerinden çeker; yoksa DB'den."""
@@ -149,11 +151,11 @@ def resolve_work_order_api(work_order_id: str) -> bool:
         return False
 
 
-# ── Plotly Confidence Gauge (Gün 25) ──────────────────────────
+# ── Plotly Confidence Gauge ──────────────────────────
 def render_confidence_gauge(score: float, title: str = "YSA Anomali Skoru"):
     """
     plotly.graph_objects.Indicator ile 0-1 arası anomali skorunu
-    ibre (gauge) olarak gösterir. ~30 satır kod, yüksek görsel etki.
+    ibre (gauge) olarak gösterir.
     """
     color = "#2ecc71" if score < 0.4 else ("#f39c12" if score < 0.7 else "#e74c3c")
     fig = go.Figure(go.Indicator(
@@ -200,7 +202,7 @@ def main():
         )
         st.markdown("---")
 
-        # Gün 27: Sidebar Hızlı Kaos Butonları
+        # Sidebar Hızlı Kaos Butonları
         st.subheader("⚡ Hızlı Kaos")
         if st.button("🔴 Bellek Sızıntısı Başlat", use_container_width=True):
             msg = call_chaos_api("/api/v1/chaos/start-leak")
@@ -213,7 +215,7 @@ def main():
             st.toast(msg, icon="⬛")
 
         st.markdown("---")
-        st.caption("v2.0 — Gün 22-28 | streamlit-autorefresh ✓")
+        st.caption("v2.0 | streamlit-autorefresh ✓")
 
     # ── Verileri Çek ───────────────────────────────────────────
     metrics_df    = get_metrics_from_api()
@@ -269,7 +271,7 @@ def main():
             st.info("Grafik henüz üretilmedi. → `python ai/explainability.py`")
 
     # ══════════════════════════════════════════════════════════
-    # SAYFA 2: SİSTEM DURUMU (Gün 24 — FastAPI + line_chart)
+    # SAYFA 2: SİSTEM DURUMU (FastAPI + line_chart)
     # ══════════════════════════════════════════════════════════
     elif menu == "📊 Sistem Durumu":
         st.title("📊 Canlı Sistem Durumu")
@@ -291,7 +293,7 @@ def main():
 
             chart_data = metrics_df.sort_values("timestamp").set_index("timestamp")
 
-            # Gün 24: st.line_chart ile canlı zaman serisi — CPU + RAM aynı grafikte
+            #  st.line_chart ile canlı zaman serisi — CPU + RAM aynı grafikte
             st.subheader("📈 CPU & RAM Zaman Serisi (Canlı)")
             st.line_chart(
                 chart_data[["cpu_percent", "ram_percent"]],
@@ -310,7 +312,7 @@ def main():
             st.dataframe(metrics_df, use_container_width=True)
 
     # ══════════════════════════════════════════════════════════
-    # SAYFA 3: YSA TAHMİN PANELİ (Gün 25)
+    # SAYFA 3: YSA TAHMİN PANELİ 
     # ══════════════════════════════════════════════════════════
     elif menu == "🧠 YSA Tahmin Paneli":
         st.title("🧠 YSA Tahmin Paneli")
@@ -330,7 +332,7 @@ def main():
             ram_pct    = pred.get("ram_percent", 0.0)
             cpu_pct    = pred.get("cpu_percent", 0.0)
 
-            # Risk Durumu Gösterimi — st.error / st.warning / st.success (Gün 25)
+            # Risk Durumu Gösterimi — st.error / st.warning / st.success
             st.subheader("Anlık Risk Durumu")
             if "CRITICAL" in risk_level or score >= 0.8:
                 st.error(f"🚨 KRİTİK RİSK! Anomali skoru: {score:.2f} — Sistem müdahale gerektirebilir!")
@@ -343,7 +345,7 @@ def main():
 
             st.markdown("---")
 
-            # Confidence Gauge + TTF (Gün 25)
+            # Confidence Gauge + TTF
             gauge_col, ttf_col = st.columns([2, 1])
 
             with gauge_col:
@@ -389,7 +391,7 @@ def main():
                     st.line_chart(pred_df[["anomaly_score"]], color="#8A2BE2")
 
     # ══════════════════════════════════════════════════════════
-    # SAYFA 4: ERP İŞ EMİRLERİ (Gün 26 — resolve butonu)
+    # SAYFA 4: ERP İŞ EMİRLERİ — resolve butonu)
     # ══════════════════════════════════════════════════════════
     elif menu == "📋 ERP İş Emirleri":
         st.title("📋 ERP İş Emirleri")
@@ -424,7 +426,7 @@ def main():
                         if desc:
                             st.caption(desc)
                     with col_btn:
-                        # Gün 26: st.button ile durum güncelleme
+                        #: st.button ile durumcelleme
                         if st.button("✅ Çözüldü", key=f"resolve_{wo_id}"):
                             success = resolve_work_order_api(wo_id)
                             if success:
@@ -432,7 +434,7 @@ def main():
                                 st.cache_data.clear()
                                 st.rerun()
                             else:
-                                st.toast("Güncelleme başarısız — FastAPI çalışıyor mu?", icon="❌")
+                                st.toast("Güncelleme başarısız - FastAPI çalışıyor mu?", icon="❌")
                     st.divider()
 
             if not closed_wo.empty:
@@ -452,7 +454,7 @@ def main():
                     )
 
     # ══════════════════════════════════════════════════════════
-    # SAYFA 5: ANOMALY TIMELINE (Gün 26)
+    # SAYFA 5: ANOMALY TIMELINE )
     # ══════════════════════════════════════════════════════════
     elif menu == "🕐 Anomaly Timeline":
         st.title("🕐 Anomaly Timeline — Olay Zaman Çizelgesi")
@@ -503,7 +505,7 @@ def main():
                 "İş emirleri ve self-healing aksiyonları burada görünecek."
             )
         else:
-            # Gün 26: plotly.express.timeline
+            #: plotly.express.timeline
             tl_df = pd.DataFrame(timeline_rows)
             fig = px.timeline(
                 tl_df,
@@ -525,7 +527,7 @@ def main():
                 st.info("event_logs tablosu boş (self-healing henüz çalışmadı).")
 
     # ══════════════════════════════════════════════════════════
-    # SAYFA 6: KAOS KONTROL PANELİ (Gün 27)
+    # SAYFA 6: KAOS KONTROL PANELİ  
     # ══════════════════════════════════════════════════════════
     elif menu == "💥 Kaos Kontrol":
         st.title("💥 Kaos Test Kontrol Paneli")
