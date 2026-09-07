@@ -26,17 +26,9 @@ class TestWeek3Integration(unittest.TestCase):
         cls.db.initialize_schema()
         cls.work_order_usecase = GenerateWorkOrderUseCase(cls.db)
         
-        # Test için bilerek sentetik bir model eğitiyoruz (Tahminleri kesin bilmek için)
+        # Kayıtlı modeli yükle (Gerçek test)
         cls.trainer = AnomalyTrainer()
-        # Eğitim verisi oluştur (sentetik)
-        X = np.random.uniform(20, 100, (100, 4)).astype(np.float32)
-        y = np.random.randint(0, 2, (100,)).astype(np.float32)
-        
-        # Son birkaç satırı kesin anomali yapalım ki model öğrensin
-        X[-10:] = 100.0
-        y[-10:] = 1.0
-        
-        cls.trainer.train(X, y, epochs=10, verbose=False)
+        cls.trainer.load_model("ai/anomaly_model.pth")
             
     def test_full_scenario_and_plot(self):
         """
