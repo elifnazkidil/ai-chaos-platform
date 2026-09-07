@@ -202,24 +202,13 @@ def main():
         )
         st.markdown("---")
 
-        # Sidebar Hızlı Kaos Butonları
-        st.subheader("⚡ Hızlı Kaos")
-        if st.button("🔴 Bellek Sızıntısı Başlat", use_container_width=True):
-            msg = call_chaos_api("/api/v1/chaos/start-leak")
-            st.toast(msg, icon="🔴")
-        if st.button("🟠 CPU Stress Başlat", use_container_width=True):
-            msg = call_chaos_api("/api/v1/chaos/start-cpu")
-            st.toast(msg, icon="🟠")
-        if st.button("⬛ Kaos Durdur", use_container_width=True):
-            msg = call_chaos_api("/api/v1/chaos/stop")
-            st.toast(msg, icon="⬛")
 
-        st.markdown("---")
         st.caption("v2.0 | streamlit-autorefresh ✓")
 
     # ── Verileri Çek ───────────────────────────────────────────
     metrics_df    = get_metrics_from_api()
     work_orders_df = get_work_orders()
+    events_df      = get_event_logs()
 
     # ══════════════════════════════════════════════════════════
     # SAYFA 1: ANA SAYFA
@@ -485,7 +474,6 @@ def main():
                 })
 
         # Self-healing event_logs
-        events_df = get_event_logs()
         if not events_df.empty:
             for _, row in events_df.iterrows():
                 ts = pd.to_datetime(row.get("timestamp"), errors="coerce")
@@ -587,7 +575,6 @@ def main():
 
         st.markdown("---")
         st.subheader("📜 Son Self-Healing Olayları")
-        events_df = get_event_logs()
         if events_df.empty:
             st.info("Henüz self-healing aksiyonu kaydedilmemiş.")
         else:
