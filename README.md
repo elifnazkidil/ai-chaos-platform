@@ -121,3 +121,20 @@ docker-compose up --build
 
 ## 📜 Lisans (License)
 MIT License © 2026 - FinTech Resilience & AI Lab.
+
+---
+
+## 🖼️ Grafikleri Üretmek İçin (Generate Charts Locally)
+
+Bu repoda `.png` grafik dosyaları bulunmaz (`.gitignore` ile hariç tutulmuştur).
+Aşağıdaki komutlarla grafikler **yerel makinenizde** üretilir:
+
+```bash
+# YSA Permutation Importance grafiği (ai/permutation_importance.png)
+python ai/explainability.py
+
+# RAM Tahmin vs Gerçek grafiği (test_ram_vs_prediction.png)
+python -m pytest test_integration_week3.py -v
+```
+
+> Dashboard'daki **Ablation Study** görseli bu komutlar çalıştırıldıktan sonra görünür hale gelir.
