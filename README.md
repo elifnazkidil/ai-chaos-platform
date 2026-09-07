@@ -5,7 +5,6 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?style=for-the-badge&logo=fastapi)
 ![PyTorch](https://img.shields.io/badge/PyTorch-AI--Engine-EE4C2C?style=for-the-badge&logo=pytorch)
 ![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?style=for-the-badge&logo=streamlit)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker)
 ![Clean Architecture](https://img.shields.io/badge/Architecture-Clean--Architecture-success?style=for-the-badge)
 
 ---
@@ -74,8 +73,6 @@ ai-chaos-platform/
 │   └── leak_detector.py    # Time-to-OOM ve Eğitilmiş Model Servisi
 ├── dashboard/              # Streamlit Canlı İzleme Paneli
 │   └── app.py              # Streamlit Web UI
-├── docker-compose.yml      # Çoklu Servis Orkestrasyonu
-└── Dockerfile              # Konteyner İmaj Tanımı
 ```
 
 ---
@@ -99,13 +96,6 @@ uvicorn server.api.main:app --reload
 streamlit run dashboard/app.py
 ```
 
-### 2. Docker Compose ile Tek Komutla Çalıştırma
-
-```bash
-docker-compose up --build
-```
-
----
 
 ## 🔗 API Uç Noktaları (REST API Endpoints)
 
