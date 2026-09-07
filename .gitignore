@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# PyTest cache
+.pytest_cache/
+
+# Veritabani (her makinede ayri olusur)
+metrics.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Egitilmis model dosyalari (buyuk binary)
+*.pth
+*.pt
+*.pkl
+*.h5
+
+# Grafik ciktilari (kod calisinca yeniden uretilir)
+*.png
+*.jpg
+*.jpeg
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env dosyalari (gizli anahtarlar)
+.env
+*.env
