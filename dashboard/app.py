@@ -3,7 +3,7 @@ dashboard/app.py
 
 4. Hafta: Streamlit FinTech Web Dashboard
 ======================================================
-Çalıştırma: streamlit run dashboard/app.py
+
 FastAPI sunucusu: uvicorn server.api.main:app --reload (opsiyonel, DB fallback var)
 """
 
@@ -255,7 +255,9 @@ def main():
         st.subheader("AI Model — Ablation Study")
         img_path = "ai/permutation_importance.png"
         if os.path.exists(img_path):
-            st.image(img_path, caption="YSA Permutation Importance", use_container_width=False)
+            from PIL import Image
+            img = Image.open(img_path)
+            st.image(img, caption="YSA Permutation Importance", use_container_width=False)
         else:
             st.info("Grafik henüz üretilmedi. → `python ai/explainability.py`")
 
