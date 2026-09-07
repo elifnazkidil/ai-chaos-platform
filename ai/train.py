@@ -73,7 +73,21 @@ def load_data_from_db():
         ])
         y.extend([0.0, 0.0])
         
-    return np.array(X, dtype=np.float32), np.array(y, dtype=np.float32)
+    X = np.array(X, dtype=np.float32)
+    y = np.array(y, dtype=np.float32)
+
+    # Oversampling: anomali verisini dengele
+    anomaly_mask = y == 1.0
+    normal_count = (y == 0.0).sum()
+    anomaly_count = anomaly_mask.sum()
+
+    if anomaly_count > 0 and normal_count > anomaly_count:
+        repeat = int(normal_count / anomaly_count)
+        X = np.vstack([X, np.tile(X[anomaly_mask], (repeat, 1))])
+        y = np.concatenate([y, np.tile(y[anomaly_mask], repeat)])
+        print(f"[OVERSAMPLE] Anomali {anomaly_count} -> {(y==1.0).sum()} adet (x{repeat})")
+
+    return X, y
 
 
 def main():
