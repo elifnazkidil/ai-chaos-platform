@@ -8,3 +8,5 @@ torch
 matplotlib
 streamlit
 pandas
+plotly
+streamlit-autorefresh

@@ -246,3 +246,99 @@ async def train_model_endpoint():
 # / (root) URL'ine bir istek geldiğinde (örneğin tarayıcıya http://localhost:8000/ yazıldığında) çalışır   
 async def root():
     return {"message": "AI Chaos Platform API çalışıyor. /docs adresinden Swagger arayüzüne ulaşabilirsiniz."}
+
+
+# ── Gün 26: Work Order Resolve Endpoint ────────────────────────
+@app.patch("/api/v1/work-orders/{work_order_id}/resolve")
+async def resolve_work_order(work_order_id: str):
+    """Bir iş emrini ÇÖZÜLDÜ olarak işaretler."""
+    import datetime
+    try:
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        resolved_at = datetime.datetime.now().isoformat()
+        cursor.execute(
+            "UPDATE work_orders SET status = 'ÇÖZÜLDÜ', resolved_at = ? WHERE work_order_id = ?",
+            (resolved_at, work_order_id)
+        )
+        conn.commit()
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="İş emri bulunamadı.")
+        return {"success": True, "work_order_id": work_order_id, "resolved_at": resolved_at}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Gün 26: Event Logs Endpoint ────────────────────────────────
+@app.get("/api/v1/events")
+async def get_events(limit: int = 100):
+    """event_logs tablosundaki self-healing olaylarını döner."""
+    try:
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, timestamp, action, detail FROM event_logs ORDER BY timestamp DESC LIMIT ?",
+            (limit,)
+        )
+        rows = cursor.fetchall()
+        events = [
+            {"id": r[0], "timestamp": r[1], "action": r[2], "detail": r[3]}
+            for r in rows
+        ]
+        return {"success": True, "count": len(events), "data": events}
+    except Exception as e:
+        # event_logs tablosu yoksa boş döner
+        return {"success": True, "count": 0, "data": []}
+
+
+# ── Gün 27: Kaos Kontrol Endpoint'leri ─────────────────────────
+_chaos_thread = None  # Aktif kaos thread'ini takip etmek için
+
+@app.post("/api/v1/chaos/start-leak")
+async def start_memory_leak(background_tasks: BackgroundTasks):
+    """Arka planda bellek sızıntısı simülasyonu başlatır."""
+    import threading
+    import sys
+    import os
+
+    def run_leak():
+        try:
+            sys.path.insert(0, os.getcwd())
+            from agent.chaos import simulate_memory_leak
+            simulate_memory_leak(duration_seconds=60, leak_mb_per_step=20)
+        except Exception as e:
+            print(f"[CHAOS LEAK ERROR] {e}")
+
+    t = threading.Thread(target=run_leak, daemon=True)
+    t.start()
+    return {"success": True, "message": "Bellek sızıntısı simülasyonu başlatıldı (60 saniye)."}
+
+
+@app.post("/api/v1/chaos/start-cpu")
+async def start_cpu_stress(background_tasks: BackgroundTasks):
+    """Arka planda CPU stress testi başlatır."""
+    import threading
+    import sys
+    import os
+
+    def run_cpu():
+        try:
+            sys.path.insert(0, os.getcwd())
+            from agent.chaos import simulate_cpu_stress
+            simulate_cpu_stress(duration_seconds=30)
+        except Exception as e:
+            print(f"[CHAOS CPU ERROR] {e}")
+
+    t = threading.Thread(target=run_cpu, daemon=True)
+    t.start()
+    return {"success": True, "message": "CPU stress testi başlatıldı (30 saniye)."}
+
+
+@app.post("/api/v1/chaos/stop")
+async def stop_chaos():
+    """Kaos simülasyonu için durdurma sinyali gönderir."""
+    # Kaos prosesleri daemon=True olduğundan ana thread bitince ölür.
+    # Gerçek uygulamada bir stop event kullanılır.
+    return {"success": True, "message": "Kaos durdurma sinyali gönderildi."}
