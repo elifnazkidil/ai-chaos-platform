@@ -15,6 +15,10 @@ Kullanım:
 
 import os
 import requests
+from dotenv import load_dotenv
+
+# .env dosyasından ayarları yükle (varsa)
+load_dotenv()
 
 # Ortam değişkenlerinden Telegram ayarlarını oku
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
