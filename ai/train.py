@@ -123,5 +123,13 @@ def main():
     
     print("\n[OK] Egitim tamamlandi. Model basariyla kaydedildi.")
     
+    # Explainability (Ablation Study) grafiklerini otomatik güncelle
+    try:
+        from ai.explainability import run_ablation_study
+        print("\n[EXPLAINABILITY] Analiz grafikleri (Permutation Importance) güncelleniyor...")
+        run_ablation_study()
+    except Exception as e:
+        print(f"[UYARI] Explainability grafikleri güncellenemedi: {e}")
+    
 if __name__ == "__main__":
     main()
