@@ -5,7 +5,7 @@ import multiprocessing
 import os
 import psutil
 
-def simulate_memory_leak(duration_seconds=600, allocate_mb_per_sec=5, scenario_name=None):
+def simulate_memory_leak(duration_seconds=600, allocate_mb_per_sec=5, scenario_name=None, stop_event=None):
     """
     duration_seconds: simülasyon süresi (saniye)
     allocate_mb_per_sec: saniyede ayrilacak RAM miktari (MB)
@@ -34,6 +34,9 @@ def simulate_memory_leak(duration_seconds=600, allocate_mb_per_sec=5, scenario_n
     try:
         start_time = time.time() #Başlangiç zamanini kaydet
         while time.time() - start_time < duration_seconds: 
+            if stop_event and stop_event.is_set():
+                print("[KAOS] API üzerinden durdurma sinyali alindi!")
+                break
             #time.time() , anlik zamani verir.- başlangiç zamanindan anlik zamani çikarirsa aradaki geçen süreyi buluruz.
             # 1 MB'lik bir byte dizisi oluştur ve listeye ekle
             mb_chunk = b'A' * (1024 * 1024 * allocate_mb_per_sec) #5 x 1024 x 1024 = 5,242,880 karakterlik bir veri bloğu (5MB)
@@ -58,7 +61,7 @@ def cpu_stress():
     while True:
         pass
 
-def simulate_cpu_spike(duration_seconds=600):
+def simulate_cpu_spike(duration_seconds=600, stop_event=None):
     """
     Sisteme CPU Aşiri Yükleme (CPU Spike) sizdirir.
     Mevcut çekirdek sayisi kadar işlem başlatarak tüm çekirdekleri %100 doldurur.
@@ -81,6 +84,9 @@ def simulate_cpu_spike(duration_seconds=600):
     try:
         start_time = time.time()
         while time.time() - start_time < duration_seconds:# başlangiçtan beri geçen süreyi bulmak için.Bunu  duration_seconds'ten çikarirsak kalan süreyi buluruz. 
+            if stop_event and stop_event.is_set():
+                print("[KAOS] API üzerinden durdurma sinyali alindi! CPU işlemleri sonlandiriliyor...")
+                break
             time.sleep(1)
             print(f"[KAOS] CPU Spike aktif... Kalan süre: {int(duration_seconds - (time.time() - start_time))} sn", end='\r')
             

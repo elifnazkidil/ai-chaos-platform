@@ -294,20 +294,22 @@ async def get_events(limit: int = 100):
 
 
 # ── Gün 27: Kaos Kontrol Endpoint'leri ─────────────────────────
-_chaos_thread = None  # Aktif kaos thread'ini takip etmek için
+import threading
+_chaos_stop_event = threading.Event()
 
 @app.post("/api/v1/chaos/start-leak")
 async def start_memory_leak(background_tasks: BackgroundTasks):
     """Arka planda bellek sızıntısı simülasyonu başlatır."""
-    import threading
     import sys
     import os
+
+    _chaos_stop_event.clear()
 
     def run_leak():
         try:
             sys.path.insert(0, os.getcwd())
             from agent.chaos import simulate_memory_leak
-            simulate_memory_leak(duration_seconds=60, leak_mb_per_step=20)
+            simulate_memory_leak(duration_seconds=60, allocate_mb_per_sec=20, stop_event=_chaos_stop_event)
         except Exception as e:
             print(f"[CHAOS LEAK ERROR] {e}")
 
@@ -319,15 +321,16 @@ async def start_memory_leak(background_tasks: BackgroundTasks):
 @app.post("/api/v1/chaos/start-cpu")
 async def start_cpu_stress(background_tasks: BackgroundTasks):
     """Arka planda CPU stress testi başlatır."""
-    import threading
     import sys
     import os
+
+    _chaos_stop_event.clear()
 
     def run_cpu():
         try:
             sys.path.insert(0, os.getcwd())
-            from agent.chaos import simulate_cpu_stress
-            simulate_cpu_stress(duration_seconds=30)
+            from agent.chaos import simulate_cpu_spike
+            simulate_cpu_spike(duration_seconds=30, stop_event=_chaos_stop_event)
         except Exception as e:
             print(f"[CHAOS CPU ERROR] {e}")
 
@@ -339,6 +342,5 @@ async def start_cpu_stress(background_tasks: BackgroundTasks):
 @app.post("/api/v1/chaos/stop")
 async def stop_chaos():
     """Kaos simülasyonu için durdurma sinyali gönderir."""
-    # Kaos prosesleri daemon=True olduğundan ana thread bitince ölür.
-    # Gerçek uygulamada bir stop event kullanılır.
-    return {"success": True, "message": "Kaos durdurma sinyali gönderildi."}
+    _chaos_stop_event.set()
+    return {"success": True, "message": "Kaos durdurma sinyali gönderildi. İşlemler sonlandırılıyor..."}
