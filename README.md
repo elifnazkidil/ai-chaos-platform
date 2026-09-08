@@ -13,7 +13,9 @@
 
 ## 📌 Proje Hakkında (About The Project)
 
-Bu platform; yüksek erişilebilirlik gerektiren **FinTech ve Bankacılık sunucularını** saniye saniye izleyen, kasıtlı olarak enjekte edilen bellek sızıntılarını (Memory Leak) **Yapay Sinir Ağları (YSA)** ile saatler öncesinden tespit eden ve **Clean Architecture** prensipleriyle tasarlanmış merkezi sunucusu üzerinden **Otomatik ERP İş Emirleri (Work Order)** üreterek sistem çökmesini engelleyen yapay zeka destekli bir önleyici bakım (Proactive Mitigation) platformudur.
+Bu platform; yüksek erişilebilirlik gerektiren **FinTech ve Bankacılık sunucularını** saniye saniye izleyen, kasıtlı olarak enjekte edilen bellek sızıntılarını (Memory Leak) **Yapay Sinir Ağları (YSA)** ile saatler öncesinden tespit eden ve **Clean Architecture** prensipleriyle tasarlanmış merkezi sunucusu üzerinden **Otomatik ERP İş Emirleri (Work Order)** üreterek sistem çökmesini engelleyen yapay zeka destekli bir önleyici bakım (Proactive Mitigation) platformudur. 
+
+Ayrıca sisteme entegre edilen **Qwen (Ollama) LLM** destekli Karar Motoru sayesinde; YSA'nın ürettiği anomali skorları kural motoruyla işlenir ve otonom kararlar **LLM tarafından açıklanarak** (sorup/cevaplama şeklinde) Telegram üzerinden zengin raporlar olarak iletilir.
 
 ---
 
@@ -40,13 +42,14 @@ graph TD
         D --> E[Domain Entities]
         D --> F[Infrastructure / SQLite ORM Adapter]
         D --> G[AI Leak Detector / ANN Model]
+        G --> L[Decision Engine: YSA + Rules + LLM]
     end
 
     subgraph Resilience & ERP Automation Tier
-        G -->|Time-to-OOM < 5 mins| H[ERP Work Order Engine]
+        L -->|Action & LLM Explanation| H[ERP Work Order Engine]
+        L -->|Zengin Türkçe Rapor| J[Slack / Telegram Alerts]
         H -->|Webhook Trigger| N[n8n Workflow Automation]
         N -->|Generate Work Order Ticket| I[SAP / Oracle ERP Simulator]
-        N -->|Dispatch Alert| J[Slack / Telegram Alerts]
     end
 
     subgraph Dashboard Tier
@@ -63,8 +66,8 @@ graph TD
 ai-chaos-platform/
 ├── server/                 # Clean Architecture Merkezi Backend
 │   ├── domain/             # Saf Python İş Varlıkları (Metric, WorkOrder)
-│   ├── usecases/           # İş Kuralları (Ingest, Predict, ERP Logic)
-│   ├── infrastructure/     # Veritabanı ve Kurumsal Adaptörler
+│   ├── usecases/           # İş Kuralları (Ingest, Predict, Decision Engine, ERP Logic)
+│   ├── infrastructure/     # Veritabanı ve Kurumsal Adaptörler (LLM Adapter)
 │   └── api/                # FastAPI REST API Controller Rotaları
 ├── agent/                  # Sistem İzleme Ajanı & Kaos Modülleri
 │   ├── monitor.py          # psutil Metrik Toplayıcı
@@ -106,6 +109,7 @@ streamlit run dashboard/app.py
 | `POST` | `/api/v1/metrics` | Ajanlardan gelen metrikleri asenkron olarak kaydeder |
 | `GET` | `/api/v1/metrics/latest` | Canlı metrikleri Streamlit arayüzüne sunar |
 | `GET` | `/api/v1/predictions` | YSA modelinin tahmini çökme süresini (Time-to-OOM) döner |
+| `POST` | `/api/v1/evaluate` | YSA + Kural Motoru + LLM (Decision Engine) üzerinden karar açıklar |
 | `GET` | `/api/v1/work-orders` | Otomatik üretilen ERP İş Emirlerini listeler |
 | `POST` | `/api/v1/chaos/trigger` | Arayüzden Kaos testi başlatır |
 

@@ -71,6 +71,23 @@ if __name__ == "__main__":
             
             print(f"[{metrics['zaman']}] Veritabanına kaydedildi -> CPU: %{metrics['cpu_yuzde']} | RAM: %{metrics['ram_yuzde']}")
             
+            # ─── API ENTEGRASYONU (Sadece riskli durumlarda) ───
+            if metrics['cpu_yuzde'] > 85.0 or metrics['ram_yuzde'] > 80.0:
+                print(f"[!] Yüksek kaynak kullanımı tespit edildi. AI Decision Engine'e gönderiliyor...")
+                payload = {
+                    "cpu_percent": metrics['cpu_yuzde'],
+                    "ram_percent": metrics['ram_yuzde'],
+                    "ram_used_gb": metrics['ram_kullanilan_gb'],
+                    "ram_total_gb": metrics['ram_toplam_gb'],
+                    "agent_id": "server-prod-01"
+                }
+                try:
+                    import requests
+                    resp = requests.post("http://127.0.0.1:8000/api/v1/evaluate", json=payload, timeout=5)
+                    print(f"    └─ AI Yanıtı: {resp.status_code}")
+                except Exception as e:
+                    print(f"    └─ API Hatası: {e}")
+            
             # psutil.cpu_percent zaten 1 saniye beklediği için ekstra sleep koymuyoruz, saniyede 1 kayıt alır.
     except KeyboardInterrupt:
         print("\nAgent durduruldu. Veritabanı bağlantısı kapatılıyor...")
