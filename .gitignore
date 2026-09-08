@@ -42,6 +42,7 @@ Thumbs.db
 # Env dosyalari (gizli anahtarlar)
 .env
 *.env
+.env.example
 
 # Kisisel planlama dosyalari (sadece yerel kalsin)
 *.pdf
