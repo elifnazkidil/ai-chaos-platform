@@ -21,7 +21,9 @@ Ayrıca sisteme entegre edilen **Qwen (Ollama) LLM** destekli Karar Motoru sayes
 
 ## 📽️ Canlı Gösterim & Demo (Demo GIF)
 
-![Platform Live Demo](docs/demo.gif)
+<!-- ![Platform Live Demo](docs/demo.gif) -->
+*(Demo yakında eklenecek)*
+
 *(Canlı Dashboard: RAM Metrik Akışı, YSA Tahmin Eğrisi, Otomatik ERP Bilet Üretimi ve Kaos Kontrol Paneli)*
 
 ---
