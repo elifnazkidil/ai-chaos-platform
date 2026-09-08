@@ -83,10 +83,10 @@ if __name__ == "__main__":
                 }
                 try:
                     import requests
-                    resp = requests.post("http://127.0.0.1:8000/api/v1/evaluate", json=payload, timeout=5)
-                    print(f"    └─ AI Yanıtı: {resp.status_code}")
+                    resp = requests.post("http://127.0.0.1:8000/api/v1/evaluate", json=payload, timeout=30)
+                    print(f"    -> AI Yanıtı: {resp.status_code}")
                 except Exception as e:
-                    print(f"    └─ API Hatası: {e}")
+                    print(f"    -> API Hatası: {e}")
             
             # psutil.cpu_percent zaten 1 saniye beklediği için ekstra sleep koymuyoruz, saniyede 1 kayıt alır.
     except KeyboardInterrupt:
