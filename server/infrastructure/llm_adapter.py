@@ -14,7 +14,7 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 DEFAULT_MODEL = "qwen2.5:0.5b"
 
 
-def generate(prompt: str, model: str = DEFAULT_MODEL, timeout: int = 60) -> str | None:
+def generate(prompt: str, model: str = DEFAULT_MODEL, timeout: int = 60, max_tokens: int = 200) -> str | None:
     """
     Ollama API'sine prompt gönderir ve LLM'in ürettiği metni döndürür.
 
@@ -22,6 +22,7 @@ def generate(prompt: str, model: str = DEFAULT_MODEL, timeout: int = 60) -> str 
         prompt: LLM'e gönderilecek metin (Türkçe veya İngilizce)
         model: Kullanılacak Ollama modeli (varsayılan: qwen2.5:0.5b)
         timeout: Maksimum bekleme süresi (saniye)
+        max_tokens: Maksimum üretilecek token sayısı
 
     Returns:
         str: LLM'in ürettiği yanıt metni
@@ -30,7 +31,8 @@ def generate(prompt: str, model: str = DEFAULT_MODEL, timeout: int = 60) -> str 
     payload = {
         "model": model,
         "prompt": prompt,
-        "stream": False  # Tüm yanıtı tek seferde al (stream=True ise parça parça gelir)
+        "stream": False,  # Tüm yanıtı tek seferde al (stream=True ise parça parça gelir)
+        "options": {"num_predict": max_tokens, "temperature": 0.7}
     }
 
     try:

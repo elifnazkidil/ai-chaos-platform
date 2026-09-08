@@ -19,11 +19,11 @@ def init_db():
         with sqlite3.connect('metrics.db') as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS event_logs (#event loglar sadece self healing: aksiyonlarını tutar
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,#otomatik artan id
-                    timestamp TEXT,#ne zaman olduğunu tutar
-                    action TEXT,#ne yapildigini tutar(örneğin KILL PROCESS)
-                    detail TEXT#sadece sistem loglarını tutar
+                CREATE TABLE IF NOT EXISTS event_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT,
+                    action TEXT,
+                    detail TEXT
                 )
             ''')
     except Exception as e:
@@ -35,7 +35,7 @@ def log_event(action, detail):
         with sqlite3.connect('metrics.db') as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT INTO event_logs (timestamp, action, detail)#sql sorgusu ile ekleme yaparız. 
+                INSERT INTO event_logs (timestamp, action, detail)
                 VALUES (?, ?, ?)
             ''', (timestamp, action, detail))
     except Exception as e:

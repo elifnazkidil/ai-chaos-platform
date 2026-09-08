@@ -43,6 +43,8 @@ from server.usecases.save_metric import SaveMetricUseCase
 
 from server.usecases.get_latest_metrics import GetLatestMetricsUseCase
 
+from server.usecases.decision_engine import DecisionEngine
+
 from server.domain.exceptions import InvalidMetricError, RepositoryError
 #projenin başka bir dosyasında (server/domain/exceptions.py
 # InvalidMetricError : Gelen metrik verisi geçersiz olduğunda fırlatılan özel hata sınıfı (400 Bad Request).
@@ -106,6 +108,7 @@ metric_repo = SQLiteMetricRepository(db_manager) #Bu, depoyu (repository) oluşt
 
 save_metric_uc = SaveMetricUseCase(metric_repo)#(Use Case).
 get_latest_metrics_uc = GetLatestMetricsUseCase(metric_repo)
+decision_engine_uc = DecisionEngine()
 
 #Global Scope riskleri:veritabanı bağlantısı koparsa, o global nesne bozuk kalır ve API'ye gelen tüm istekler hata vermeye başlar
 #Bu değişkenler hiçbir def (fonksiyon) veya class içine yazılmamış.
@@ -213,6 +216,21 @@ async def get_predictions(limit: int = 50):
             status_code=500,
             content={"success": False, "error_message": f"Model hatası: {str(e)}"}
         )
+
+@app.post("/api/v1/evaluate")
+async def evaluate_decision(payload: Dict[str, Any]):
+    """AI Karar Motoru (Decision Engine) uç noktası. Metrikleri alıp aksiyon ve LLM açıklaması döner."""
+    try:
+        result = decision_engine_uc.evaluate(
+            cpu=float(payload.get("cpu_percent", 0.0)),
+            ram=float(payload.get("ram_percent", 0.0)),
+            ram_used_gb=float(payload.get("ram_used_gb", 0.0)),
+            ram_total_gb=float(payload.get("ram_total_gb", 16.0)),
+            agent_id=payload.get("agent_id", "unknown")
+        )
+        return {"success": True, "result": result}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"success": False, "error_message": str(e)})
 
 def train_model_process():
     import sys
