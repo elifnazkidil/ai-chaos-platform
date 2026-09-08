@@ -15,10 +15,12 @@ Kullanım:
 
 import os
 import requests
+from pathlib import Path
 from dotenv import load_dotenv
 
-# .env dosyasından ayarları yükle (varsa)
-load_dotenv()
+# .env dosyasını proje kök dizininden yükle (hangi dizinden çalıştırılırsa çalıştırılsın)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(dotenv_path=_PROJECT_ROOT / ".env")
 
 # Ortam değişkenlerinden Telegram ayarlarını oku
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
