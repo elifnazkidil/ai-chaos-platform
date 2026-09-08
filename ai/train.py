@@ -1,7 +1,6 @@
 """
 ai/train.py
-Model Eğitim Scripti (Gün 10 Pratik)
-
+Model Eğitim Scripti
 Bu script, metrics.db veritabanından toplanan gerçek verileri okur,
 label'larını (etiketlerini) mantıksal olarak belirler ve 
 Yapay Sinir Ağı'nı (AnomalyTrainer) eğitip kaydeder.
