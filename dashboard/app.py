@@ -44,7 +44,7 @@ def get_db_connection():
 
 
 #  FastAPI /api/v1/metrics/latest'ten veri çekme
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=5, show_spinner=False)
 def get_metrics_from_api(limit: int = 100) -> pd.DataFrame:
     """
     Önce FastAPI'dan, erişilemezse doğrudan DB'den okur.
@@ -76,7 +76,7 @@ def get_metrics_from_api(limit: int = 100) -> pd.DataFrame:
     return df
 
 
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=5, show_spinner=False)
 def get_work_orders() -> pd.DataFrame:
     """İş emirlerini DB'den okur."""
     conn = get_db_connection()
@@ -92,7 +92,7 @@ def get_work_orders() -> pd.DataFrame:
 
 
 # /api/v1/predictions endpoint'inden YSA tahminleri
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=5, show_spinner=False)
 def get_predictions() -> list:
     """FastAPI /api/v1/predictions'tan YSA tahminlerini çeker."""
     try:
@@ -105,7 +105,7 @@ def get_predictions() -> list:
 
 
 #event_logs'u API'den çek
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=5, show_spinner=False)
 def get_event_logs() -> pd.DataFrame:
     """self-healing event_logs'u FastAPI üzerinden çeker; yoksa DB'den."""
     try:

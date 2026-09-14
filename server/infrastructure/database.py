@@ -1,17 +1,16 @@
 """
 server/infrastructure/database.py
 
-Infrastructure Katmanı — SQLite Veritabanı Yöneticisi
+Infrastructure Katmani — SQLite Veritabani Yöneticisi
 =======================================================
-Clean Architecture'da Infrastructure katmanı, dış dünyayla (DB, API, dosya sistemi)
-konuşmaktan sorumludur. Domain ve Use Cases katmanları bu dosyadan habersizdir;
+Clean Architecture'da Infrastructure katmani, diş dünyayla (DB, API, dosya sistemi)
+konuşmaktan sorumludur. Domain ve Use Cases katmanlari bu dosyadan habersizdir;
 sadece Repository(kaydet ama sonrasi dgaf) arayüzlerini bilirler.
 
-Öğrenilen Kavramlar (Gün 
-  - Context Manager (__enter__ / __exit__): "with" bloklarında otomatik kaynak yönetimi
+Öğrenilen Kavramlar 
+  - Context Manager (__enter__ / __exit__): "with" bloklarinda otomatik kaynak yönetimi
   - Singleton Pattern: Uygulama boyunca tek bir DatabaseManager örneği
-  - CREATE TABLE IF NOT EXISTS: İdempotent (tekrar çalışsa hata vermez) tablo oluşturma
-  - NOT NULL, PRIMARY KEY, TEXT/REAL: SQLite veri tipleri ve kısıtlamaları
+  - NOT NULL, PRIMARY KEY, TEXT/REAL: SQLite veri tipleri ve kisitlamalari
 """
 
 import sqlite3
@@ -20,16 +19,16 @@ from pathlib import Path
 
 
 # ─────────────────────────────────────────────────────────────
-# SORU: DB_PATH — nereye metrics.db yaratıyor?
+# SORU: DB_PATH — nereye metrics.db yaratiyor?
 #
-# CEVAP: Path(__file__) bu dosyanın kendisinin tam yolunu verir.
+# CEVAP: Path(__file__) bu dosyanin kendisinin tam yolunu verir.
 #   Örnek: C:/proje/server/infrastructure/database.py
 #
 #   Yani PROJECT_ROOT = C:/proje
 #   Ve   DB_PATH      = C:/proje/metrics.db
 #
 #   Bu sayede metrics.db her zaman projenin KÖK klasöründe oluşur,
-#   hangi dizinden çalıştırırsan çalıştır fark etmez.
+#   hangi dizinden çaliştirirsan çaliştir fark etmez.
 # ─────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DB_PATH = PROJECT_ROOT / "metrics.db"
@@ -39,21 +38,21 @@ DB_PATH = PROJECT_ROOT / "metrics.db"
 # SORU: CREATE_METRICS_TABLE — hangi sütunlar var, tipleri ne?
 #
 # CEVAP:
-#   metric_id    → TEXT PRIMARY KEY : UUID string. PRIMARY KEY = her satır benzersiz,
-#                                     aynı metric_id ile 2. kayıt giremez.
-#   agent_id     → TEXT NOT NULL    : Hangi sunucudan geldi? Boş bırakılamaz.
-#   timestamp    → TEXT NOT NULL    : Zaman damgası ISO 8601 string olarak saklanır.
+#   metric_id    → TEXT PRIMARY KEY : UUID string. PRIMARY KEY = her satir benzersiz,
+#                                     ayni metric_id ile 2. kayit giremez.
+#   agent_id     → TEXT NOT NULL    : Hangi sunucudan geldi? Boş birakilamaz.
+#   timestamp    → TEXT NOT NULL    : Zaman damgasi ISO 8601 string olarak saklanir.
 #                                     Örn: "2026-08-11T08:00:00"
-#   cpu_percent  → REAL NOT NULL    : CPU yüzdesi. REAL = ondalıklı sayı (float).
-#   ram_percent  → REAL NOT NULL    : RAM yüzdesi. 0.0 ile 100.0 arası.
-#   ram_used_gb  → REAL NOT NULL    : Kullanılan RAM miktarı gigabyte cinsinden.
+#   cpu_percent  → REAL NOT NULL    : CPU yüzdesi. REAL = ondalikli sayi (float).
+#   ram_percent  → REAL NOT NULL    : RAM yüzdesi. 0.0 ile 100.0 arasi.
+#   ram_used_gb  → REAL NOT NULL    : Kullanilan RAM miktari gigabyte cinsinden.
 #   ram_total_gb → REAL NOT NULL    : Toplam RAM kapasitesi gigabyte cinsinden.
 #
 #   SQLite'da sadece 5 tip var: TEXT, REAL, INTEGER, BLOB, NULL
 #   Python'daki str  → TEXT
 #   Python'daki float → REAL
 #   Python'daki int  → INTEGER
-#""" işaretleri koda dahildir ve içindeki SQL sorgusunu metin olarak paketlemeye yarar. Onları silersen veritabanı sorgusu bozulu ────────
+#   işaretleri koda dahildir ve içindeki SQL sorgusunu metin olarak paketlemeye yarar. Onlari silersen veritabani sorgusu bozulu ────────
 # ─────────────────────────────────────────────────────
 CREATE_METRICS_TABLE = """
 CREATE TABLE IF NOT EXISTS metrics (
@@ -72,15 +71,15 @@ CREATE TABLE IF NOT EXISTS metrics (
 #       resolved_at neden NULL olabilir?
 #
 # CEVAP:
-#   work_order_id            → TEXT PRIMARY KEY : "WO-A1B2C3D4" formatında benzersiz ID.
-#   agent_id                 → TEXT NOT NULL    : Hangi sunucu için açıldı?
+#   work_order_id            → TEXT PRIMARY KEY : "WO-A1B2C3D4" formatinda benzersiz ID.
+#   agent_id                 → TEXT NOT NULL    : Hangi sunucu için açildi?
 #   risk_level               → TEXT NOT NULL    : "NORMAL", "ORTA", "YÜKSEK", "KRİTİK"
 #   status                   → TEXT NOT NULL    : "BEKLEMEDE", "İŞLEMDE", "ÇÖZÜLDÜ"
-#   description              → TEXT             : Açıklama metni. NOT NULL YOK = boş olabilir.
+#   description              → TEXT             : Açiklama metni. NOT NULL YOK = boş olabilir.
 #   estimated_seconds_to_oom → REAL NOT NULL    : Tahmini çökme süresi (saniye).
-#   ram_percent_at_trigger   → REAL NOT NULL    : Alarm anındaki RAM yüzdesi.
-#   created_at               → TEXT NOT NULL    : İş emri oluşturulma zamanı. Her zaman dolu.
-#   resolved_at              → TEXT             : Çözülme zamanı.
+#   ram_percent_at_trigger   → REAL NOT NULL    : Alarm anindaki RAM yüzdesi.
+#   created_at               → TEXT NOT NULL    : İş emri oluşturulma zamani. Her zaman dolu.
+#   resolved_at              → TEXT             : Çözülme zamani.
 
 # entities.py
 #@dataclass
@@ -91,10 +90,10 @@ CREATE TABLE IF NOT EXISTS metrics (
 #    ... 
 #
 #   resolved_at neden NULL olabilir?
-#   Çünkü iş emri henüz çözülmemiş olabilir! Bir alarm açıldığında resolved_at = NULL başlar.
-#   Ancak iş emri ÇÖZÜLDÜ durumuna geçince bu sütuna zaman damgası yazılır.
-#   NULL = "henüz gerçekleşmemiş" anlamına gelir.
-#   NOT NULL yazsaydık, iş emri açılırken bile bir tarih vermek zorunda kalırdık — saçma olurdu.
+#   Çünkü iş emri henüz çözülmemiş olabilir! Bir alarm açildiğinda resolved_at = NULL başlar.
+#   Ancak iş emri ÇÖZÜLDÜ durumuna geçince bu sütuna zaman damgasi yazilir.
+#   NULL = "henüz gerçekleşmemiş" anlamina gelir.
+#   NOT NULL yazsaydik, iş emri açilirken bile bir tarih vermek zorunda kalirdik — saçma olurdu.
 # ─────────────────────────────────────────────────────────────
 CREATE_WORK_ORDERS_TABLE = """
 CREATE TABLE IF NOT EXISTS work_orders (
@@ -113,7 +112,7 @@ CREATE TABLE IF NOT EXISTS work_orders (
 
 class DatabaseManager:
     """
-    SQLite bağlantısını ve tablo şemasını yöneten merkezi sınıf.
+    SQLite bağlantisini ve tablo şemasini yöneten merkezi sinif.
 
     KULLANIM (Context Manager ile):
         with DatabaseManager() as db:
@@ -121,29 +120,29 @@ class DatabaseManager:
             cursor.execute("SELECT ...")
 
     Context Manager nedir?
-    Python'da "with" bloğu ile kullanılan nesneler.
-    __enter__: Blok başladığında çalışır (bağlantıyı açar)
-    __exit__:  Blok bittiğinde çalışır (bağlantıyı kapatır, hata da olsa)
+    Python'da "with" bloğu ile kullanilan nesneler.
+    __enter__: Blok başladiğinda çalişir (bağlantiyi açar)
+    __exit__:  Blok bittiğinde çalişir (bağlantiyi kapatir, hata da olsa)
     """
 
     def __init__(self, db_path: str = None):
         """
-        :param db_path: Veritabanı dosya yolu. None ise varsayılan proje DB'si kullanılır.
+        :param db_path: Veritabani dosya yolu. None ise varsayilan proje DB'si kullanilir.
         """
         self.db_path = str(db_path or DB_PATH)
         self._connection: sqlite3.Connection = None
 #       def get_connection(self):
-#    if self._connection is None:  # henüz bağlantı yoksa
+#    if self._connection is None:  # henüz bağlanti yoksa
 #        self._connection = sqlite3.connect(...)  # oluştur
 #    return self._connection
 
-# Alt çizgi _connection → "bu değişkene dışarıdan doğrudan erişme, sınıf içinde kullan" anlamında konvansiyon.
+# Alt çizgi _connection → "bu değişkene dişaridan doğrudan erişme, sinif içinde kullan" anlaminda konvansiyon.
 
     def get_connection(self) -> sqlite3.Connection:
         """
-        Aktif SQLite bağlantısını döner; yoksa yenisini oluşturur.
+        Aktif SQLite bağlantisini döner; yoksa yenisini oluşturur.
 
-        check_same_thread=False: Farklı thread'lerden aynı bağlantıya erişime izin verir.
+        check_same_thread=False: Farkli thread'lerden ayni bağlantiya erişime izin verir.
         Bu FastAPI gibi asenkron frameworkler için gereklidir.
         """
         if self._connection is None:
@@ -152,18 +151,18 @@ class DatabaseManager:
                 check_same_thread=False
             )
             # ─────────────────────────────────────────────────────
-            # SORU: row_factory ne işe yarıyor?
+            # SORU: row_factory ne işe yariyor?
             #
-            # CEVAP: Normalde SQLite sorgusundan dönen satırlar tuple'dır:
+            # CEVAP: Normalde SQLite sorgusundan dönen satirlar tuple'dir:
             #   row = (0.0, 45.2, 8.0, 16.0)
             #   row[0] = metric_id  ← hangi index ne anlama geliyor? Bilinmez!
             #
-            # sqlite3.Row atarsak satırlar hem index hem de SÜTUN ADIYLA erişilebilir:
+            # sqlite3.Row atarsak satirlar hem index hem de SÜTUN ADIYLA erişilebilir:
             #   row["ram_percent"]  ← çok daha okunabilir!
-            #   row["cpu_percent"]  ← hangi değer olduğu açık
-            #   row[3]              ← eski yöntem hâlâ çalışır
+            #   row["cpu_percent"]  ← hangi değer olduğu açik
+            #   row[3]              ← eski yöntem hâlâ çalişir
             #
-            # Özetle: row_factory = sqlite3.Row, SQL sonuçlarını
+            # Özetle: row_factory = sqlite3.Row, SQL sonuçlarini
             # sözlük gibi (dict-like) erişilebilir yapar.
             # ─────────────────────────────────────────────────────
             self._connection.row_factory = sqlite3.Row
@@ -171,8 +170,8 @@ class DatabaseManager:
 
     def initialize_schema(self) -> None:
         """
-        Veritabanı tablolarını oluşturur (yoksa).
-        Uygulama ilk başladığında bir kez çağrılır.
+        Veritabani tablolarini oluşturur (yoksa).
+        Uygulama ilk başladiğinda bir kez çağrilir.
 
         IF NOT EXISTS sayesinde tablolar zaten varsa hata vermez — idempotent!
         """
@@ -190,49 +189,49 @@ class DatabaseManager:
         print(f"[DB] Sema basariyla baslatildi -> {self.db_path}")
 
     def close(self) -> None:
-        """Bağlantıyı güvenli şekilde kapatır."""
+        """Bağlantiyi güvenli şekilde kapatir."""
         if self._connection:
             self._connection.close()
             self._connection = None
 
     # ─────────────────────────────────────────────────────────
-    # SORU: __enter__ / __exit__ — context manager nasıl çalışıyor?
+    # SORU: __enter__ / __exit__ — context manager nasil çalişiyor?
     #
-    # CEVAP: Python'da "with" anahtar kelimesi kullanıldığında
+    # CEVAP: Python'da "with" anahtar kelimesi kullanildiğinda
     #
-    #   Örnek kullanım:
-    #     with DatabaseManager() as db:   ← __enter__ çalışır, db = self döner
-    #         db.get_connection()          ← normal kodun çalıştığı yer
-    #     ← buraya gelince __exit__ çalışır, bağlantı kapatılır
+    #   Örnek kullanim:
+    #     with DatabaseManager() as db:   ← __enter__ çalişir, db = self döner
+    #         db.get_connection()          ← normal kodun çaliştiği yer
+    #     ← buraya gelince __exit__ çalişir, bağlanti kapatilir
     #
-    #   Context Manager'ın avantajı:
+    #   Context Manager'in avantaji:
     #     Normalde şöyle yazman gerekirdi:
     #       db = DatabaseManager()
     #       db.initialize_schema()
     #       try:
-    #   Python otomatik olarak __enter__ ve __exit__ metodlarını çağırır.
+    #   Python otomatik olarak __enter__ ve __exit__ metodlarini çağirir.
     #           ... kod ...
     #       finally:
     #           db.close()    ← hata olsa bile kapat!
     #
     #     Context Manager bunu otomatik yapar. "finally" bloğunu
-    #     sen yazmak zorunda kalmazsın, __exit__ her zaman çalışır.
+    #     sen yazmak zorunda kalmazsin, __exit__ her zaman çalişir.
     #
     #   __exit__ parametreleri:
-    #     exc_type → Hata varsa hata sınıfı (ValueError gibi), yoksa None
-    #     exc_val  → Hata varsa hata mesajı, yoksa None
+    #     exc_type → Hata varsa hata sinifi (ValueError gibi), yoksa None
+    #     exc_val  → Hata varsa hata mesaji, yoksa None
     #     exc_tb   → Hata varsa traceback bilgisi, yoksa None
-    #     False döndürmek → Hata olursa onu bastırma, yukarıya ilet
+    #     False döndürmek → Hata olursa onu bastirma, yukariya ilet
     # ─────────────────────────────────────────────────────────
     def __enter__(self) -> "DatabaseManager":
-        """'with DatabaseManager() as db:' bloğu başladığında çalışır."""
+        """'with DatabaseManager() as db:' bloğu başladiğinda çalişir."""
         self.initialize_schema()
-        return self  # "as db" kısmına atanan değer bu: self
+        return self  # "as db" kismina atanan değer bu: self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        """'with' bloğu bittiğinde — hata olsa da olmasa da — çalışır."""
+        """'with' bloğu bittiğinde — hata olsa da olmasa da — çalişir."""
         self.close()
-        return False  # Hataları bastırma, yukarı ilet
+        return False  # Hatalari bastirma, yukari ilet
 
 
 # ─────────────────────────────────────────────────────────────
@@ -240,35 +239,35 @@ class DatabaseManager:
 #
 #
 #   Neden tek instance?
-#   Her seferinde yeni DatabaseManager() açsaydık:
-#     - Her istek için yeni SQLite bağlantısı açılır → yavaş
-#     - Birden fazla bağlantı aynı dosyayı yazarsa çakışma riski
-#     - Her bağlantıyı ayrı ayrı kapatmak gerekir → kaynak sızıntısı
+#   Her seferinde yeni DatabaseManager() açsaydik:
+#     - Her istek için yeni SQLite bağlantisi açilir → yavaş
+#     - Birden fazla bağlanti ayni dosyayi yazarsa çakişma riski
+#     - Her bağlantiyi ayri ayri kapatmak gerekir → kaynak sizintisi
 #
 #   Singleton ile:
-#     - Bağlantı bir kez açılır, hep aynısı kullanılır → hızlı
-#     - Tüm Repository'ler aynı bağlantıyı paylaşır → tutarlı
-#Tek SQLite dosya bağlantısı, iki repo tarafından kullanılır.
+#     - Bağlanti bir kez açilir, hep aynisi kullanilir → hizli
+#     - Tüm Repository'ler ayni bağlantiyi paylaşir → tutarli
+#Tek SQLite dosya bağlantisi, iki repo tarafindan kullanilir.
 #
-#   Nasıl çalışır?
+#   Nasil çalişir?
 #     _db_manager = None    ← başta yok
 #
-#     get_db() ilk kez çağrılınca:
-#       _db_manager is None → True → yeni oluştur, şemayı başlat
+#     get_db() ilk kez çağrilinca:
+#       _db_manager is None → True → yeni oluştur, şemayi başlat
 #
-#     get_db() ikinci kez çağrılınca:
-#       _db_manager is None → False → var olanı döndür, yenisini açma!
+#     get_db() ikinci kez çağrilinca:
+#       _db_manager is None → False → var olani döndür, yenisini açma!
 #
-#   "global _db_manager" satırı neden var?
+#   "global _db_manager" satiri neden var?
 #   Python'da fonksiyon içinde global bir değişkene YAZMAk için
-#   "global" bildirimi şarttır. Okumak için gerekmez ama değiştirmek için gerekir.
+#   "global" bildirimi şarttir. Okumak için gerekmez ama değiştirmek için gerekir.
 # ─────────────────────────────────────────────────────────────
 _db_manager: DatabaseManager = None
 
 
 def get_db() -> DatabaseManager:
-    global _db_manager          # Bu fonksiyon _db_manager'ı değiştireceğini Python'a bildir
-    if _db_manager is None:     # İlk kez mi çağrılıyor?
+    global _db_manager          # Bu fonksiyon _db_manager'i değiştireceğini Python'a bildir
+    if _db_manager is None:     # İlk kez mi çağriliyor?
         _db_manager = DatabaseManager()   # Evet → yeni nesne oluştur
-        _db_manager.initialize_schema()   # Tabloları yarat (yoksa)
-    return _db_manager          # Her zaman aynı nesneyi döndür
+        _db_manager.initialize_schema()   # Tablolari yarat (yoksa)
+    return _db_manager          # Her zaman ayni nesneyi döndür
