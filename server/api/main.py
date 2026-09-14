@@ -6,9 +6,9 @@ API Katmanı — FastAPI Uygulaması
 Gelen istekleri (HTTP) alır, Use Case'lere iletir ve HTTP
 yanıtlarına çevirir.
 
-.\.venv\Scripts\uvicorn.exe server.api.main:app --reload
+python -m uvicorn server.api.main:app --reload
 python -m streamlit run dashboard\app.py
-.\.venv\Scripts\python.exe agent\monitor.py
+python agent\monitor.py
 
 
 İş Akışı (Pipeline):
