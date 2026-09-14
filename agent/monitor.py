@@ -71,22 +71,37 @@ if __name__ == "__main__":
             
             print(f"[{metrics['zaman']}] Veritabanına kaydedildi -> CPU: %{metrics['cpu_yuzde']} | RAM: %{metrics['ram_yuzde']}")
             
-            # ─── API ENTEGRASYONU (Sadece riskli durumlarda) ───
-            if metrics['cpu_yuzde'] > 85.0 or metrics['ram_yuzde'] > 80.0:
-                print(f"[!] Yüksek kaynak kullanımı tespit edildi. AI Decision Engine'e gönderiliyor...")
-                payload = {
+            # Her durumda API'ye metrikleri gönder (Dashboard'da görebilmek için)
+            payload_metrics = {
+                "agent_id": "server-prod-01",
+                "timestamp": metrics['zaman'].replace(' ', 'T'), # ISO 8601 formatına çevir
+                "metrics": {
                     "cpu_percent": metrics['cpu_yuzde'],
                     "ram_percent": metrics['ram_yuzde'],
                     "ram_used_gb": metrics['ram_kullanilan_gb'],
-                    "ram_total_gb": metrics['ram_toplam_gb'],
-                    "agent_id": "server-prod-01"
+                    "ram_total_gb": metrics['ram_toplam_gb']
                 }
-                try:
-                    import requests
-                    resp = requests.post("http://127.0.0.1:8000/api/v1/evaluate", json=payload, timeout=30)
+            }
+            try:
+                import requests
+                # Ana metrik akışı
+                requests.post("http://127.0.0.1:8000/api/v1/metrics", json=payload_metrics, timeout=2)
+                
+                # ─── API ENTEGRASYONU (Sadece riskli durumlarda AI tetiklemesi) ───
+                if metrics['cpu_yuzde'] > 85.0 or metrics['ram_yuzde'] > 80.0:
+                    print(f"[!] Yüksek kaynak kullanımı tespit edildi. AI Decision Engine'e gönderiliyor...")
+                    # Evaluate endpoint'i düz (flat) payload bekliyor olabilir
+                    payload_eval = {
+                        "cpu_percent": metrics['cpu_yuzde'],
+                        "ram_percent": metrics['ram_yuzde'],
+                        "ram_used_gb": metrics['ram_kullanilan_gb'],
+                        "ram_total_gb": metrics['ram_toplam_gb'],
+                        "agent_id": "server-prod-01"
+                    }
+                    resp = requests.post("http://127.0.0.1:8000/api/v1/evaluate", json=payload_eval, timeout=30)
                     print(f"    -> AI Yanıtı: {resp.status_code}")
-                except Exception as e:
-                    print(f"    -> API Hatası: {e}")
+            except Exception as e:
+                print(f"    -> API Hatası: {e}")
             
             # psutil.cpu_percent zaten 1 saniye beklediği için ekstra sleep koymuyoruz, saniyede 1 kayıt alır.
     except KeyboardInterrupt:

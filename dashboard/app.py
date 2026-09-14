@@ -93,10 +93,10 @@ def get_work_orders() -> pd.DataFrame:
 
 # /api/v1/predictions endpoint'inden YSA tahminleri
 @st.cache_data(ttl=5, show_spinner=False)
-def get_predictions() -> list:
+def get_predictions(limit: int = 1) -> list:
     """FastAPI /api/v1/predictions'tan YSA tahminlerini çeker."""
     try:
-        resp = requests.get(f"{API_BASE}/api/v1/predictions?limit=1", timeout=2)
+        resp = requests.get(f"{API_BASE}/api/v1/predictions?limit={limit}", timeout=2)
         if resp.status_code == 200:
             return resp.json().get("predictions", [])
     except requests.exceptions.RequestException:
