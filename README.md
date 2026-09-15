@@ -92,6 +92,10 @@ ai-chaos-platform/
 
 ## 🚀 Hızlı Başlangıç (Quickstart)
 
+### ⚡ Sistem Gereksinimleri
+- Python 3.10+
+- **Ollama** kurulu ve Qwen 2.5 modeli indirilmiş olmalı (`ollama pull qwen2.5`)
+
 ### 1. Yerel Ortamda Çalıştırma (Local Setup)
 
 ```bash
@@ -107,6 +111,9 @@ uvicorn server.api.main:app --reload
 
 # 4. Streamlit Dashboard'u Başlatın
 streamlit run dashboard/app.py
+
+# 5. Veri Toplayıcı Ajanı Çalıştırın (Farklı bir terminalde)
+python agent/monitor.py
 ```
 
 
@@ -118,8 +125,11 @@ streamlit run dashboard/app.py
 | `GET` | `/api/v1/metrics/latest` | Canlı metrikleri Streamlit arayüzüne sunar |
 | `GET` | `/api/v1/predictions` | YSA modelinin tahmini çökme süresini (Time-to-OOM) döner |
 | `POST` | `/api/v1/evaluate` | YSA + Kural Motoru + LLM (Decision Engine) üzerinden karar açıklar |
+| `GET` | `/api/v1/evaluate/latest` | En son alınan LLM kararını yapılandırılmış JSON olarak sunar |
 | `GET` | `/api/v1/work-orders` | Otomatik üretilen ERP İş Emirlerini listeler |
-| `POST` | `/api/v1/chaos/trigger` | Arayüzden Kaos testi başlatır |
+| `POST` | `/api/v1/chaos/start-leak` | Arayüzden Bellek Sızıntısı (Memory Leak) testi başlatır |
+| `POST` | `/api/v1/chaos/start-cpu` | Arayüzden CPU Stress testi başlatır |
+| `POST` | `/api/v1/chaos/stop` | Devam eden Kaos testlerini durdurur |
 
 ---
 
