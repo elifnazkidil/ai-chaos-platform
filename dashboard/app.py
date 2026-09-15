@@ -104,6 +104,20 @@ def get_predictions(limit: int = 1) -> list:
     return []
 
 
+@st.cache_data(ttl=5, show_spinner=False)
+def get_llm_output() -> dict:
+    """En son LLM değerlendirmesini çeker."""
+    try:
+        resp = requests.get(f"{API_BASE}/api/v1/evaluate/latest", timeout=2)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("success"):
+                return data.get("data", {})
+    except requests.exceptions.RequestException:
+        pass
+    return {}
+
+
 #event_logs'u API'den çek
 @st.cache_data(ttl=5, show_spinner=False)
 def get_event_logs() -> pd.DataFrame:
@@ -370,6 +384,38 @@ def main():
                 st.metric("RAM", f"{ram_pct:.1f}%")
                 st.metric("CPU", f"{cpu_pct:.1f}%")
                 st.caption(f"Risk: **{risk_level}**")
+
+            st.markdown("---")
+            # --- LLM Structured Output & Feature Impacts ---
+            llm_data = get_llm_output()
+            if llm_data and "llm_structured" in llm_data and llm_data["llm_structured"]:
+                struct_data = llm_data["llm_structured"]
+                with st.expander("🤖 LLM Yorumu & XAI Feature Impacts", expanded=True):
+                    col_llm, col_impact = st.columns([1.5, 1])
+                    with col_llm:
+                        st.write(f"**Özet:** {struct_data.get('prediction_summary', 'Yok')}")
+                        st.write(f"**Öneri:** {struct_data.get('recommended_action', 'Yok')}")
+                        conf = struct_data.get('confidence_score', 0.0)
+                        st.progress(conf, text=f"LLM Confidence: {conf:.2f}")
+                        if llm_data.get("explanation"):
+                            st.caption(f"Detaylı Açıklama: {llm_data['explanation']}")
+
+                    with col_impact:
+                        impacts = struct_data.get("feature_impacts", [])
+                        if impacts:
+                            st.write("**Feature Etki Düzeyleri (Ablation)**")
+                            for imp in impacts:
+                                feat = imp.get("feature", "?")
+                                val = imp.get("impact", 0.0)
+                                drc = imp.get("direction", "")
+                                if val > 0.05:  # Sadece %5'ten büyükleri göster
+                                    st.write(f"`{feat}`: **{val*100:.1f}%** ({drc})")
+                                    st.progress(min(val, 1.0))
+                        else:
+                            st.info("Bu tahmin için XAI ablation verisi bulunmuyor.")
+            elif llm_data and "explanation" in llm_data:
+                with st.expander("🤖 LLM Yorumu", expanded=True):
+                    st.write(llm_data["explanation"])
 
             # Tüm tahmin skoru geçmişi
             all_preds = get_predictions.__wrapped__(100) if hasattr(get_predictions, "__wrapped__") else []

@@ -177,7 +177,8 @@ class DecisionEngine:
         # ─── AŞAMA 5: Event Log'a Kaydet ─────────────────
         self._log_decision(
             agent_id=agent_id, anomaly_score=anomaly_score,
-            action=action, explanation=llm_explanation
+            action=action, explanation=llm_explanation,
+            llm_structured=llm_output.to_dict(),
         )
 
         # ─── Sonuç ───────────────────────────────────────
@@ -352,21 +353,34 @@ class DecisionEngine:
     # AŞAMA 5: Event log kaydet
     # ───────────────────────────────────────────────────────
     @staticmethod
-    def _log_decision(agent_id, anomaly_score, action, explanation):
+    def _log_decision(agent_id, anomaly_score, action, explanation, llm_structured: dict = None):
         """
         Kararı event_logs tablosuna yazar.
+
+        detail alanı JSON formatında saklanır:
+          {
+            "agent_id": "...",
+            "ysa_score": 0.87,
+            "action": "RESTART",
+            "explanation": "...",
+            "llm_structured": { risk_level, prediction_summary, ... }
+          }
+        Bu sayede GET /api/v1/evaluate/latest endpoint'i tam veriyi parse edebilir.
         """
+        import json
         try:
             init_db()
-            detail = (
-                f"Agent: {agent_id} | "
-                f"YSA Skor: {anomaly_score:.4f} | "
-                f"Aksiyon: {action} | "
-                f"Aciklama: {explanation[:200]}"
-            )
-            log_event("AI_DECISION", detail)
+            detail_obj = {
+                "agent_id": agent_id,
+                "ysa_score": round(anomaly_score, 4),
+                "action": action,
+                "explanation": explanation[:300] if explanation else "",
+                "llm_structured": llm_structured or {},
+            }
+            log_event("AI_DECISION", json.dumps(detail_obj, ensure_ascii=False))
         except Exception as e:
             print(f"[DECISION LOG HATA] {e}")
+
 
 
 # ═══════════════════════════════════════════════════════════════

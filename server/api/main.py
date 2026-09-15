@@ -244,6 +244,30 @@ async def evaluate_decision(payload: Dict[str, Any]):
     except Exception as e:
         return JSONResponse(status_code=500, content={"success": False, "error_message": str(e)})
 
+@app.get("/api/v1/evaluate/latest")
+async def get_latest_evaluation():
+    """Son değerlendirme (AI_DECISION) kaydını event_logs'dan getirir."""
+    import json
+    try:
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT detail FROM event_logs WHERE action = 'AI_DECISION' ORDER BY timestamp DESC, id DESC LIMIT 1")
+        row = cursor.fetchone()
+        if not row:
+            return {"success": False, "message": "Değerlendirme bulunamadı"}
+        
+        detail_str = row[0]
+        try:
+            # Yeni format: detail alanı JSON
+            detail_data = json.loads(detail_str)
+            return {"success": True, "data": detail_data}
+        except json.JSONDecodeError:
+            # Eski format: detail alanı düz metin
+            return {"success": True, "data": {"explanation": detail_str, "llm_structured": {}}}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"success": False, "error_message": str(e)})
+
+
 def train_model_process():
     import sys
     import os
