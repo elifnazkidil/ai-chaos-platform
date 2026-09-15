@@ -6,7 +6,6 @@
 import psutil
 import time
 from datetime import datetime
-import sqlite3
 
 # ────────────────────────────────────────────────────────────────
 # Ağ Trafiği Hızı (önceki okuma saklanır, fark hesaplanır)
@@ -58,24 +57,6 @@ def _get_net_mbps() -> float:
     # 100.0 MB/s sınırı (ağ kartların pratikte ulaşabileği makul üst sınır)
     return min(round(mbps, 3), 100.0)
 
-def init_db():
-    """SQLite veritabanını ve tabloyu oluşturur."""
-    conn = sqlite3.connect('metrics.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS system_metrics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,   
-            zaman TEXT,    
-            cpu_yuzde REAL,
-            ram_yuzde REAL,
-            ram_kullanilan_gb REAL,
-            ram_toplam_gb REAL,
-            disk_yuzde REAL,
-            net_mbps REAL
-        )
-    ''')
-    conn.commit()#veritabanına kaydet.   
-    return conn
 
 def get_system_metrics():
     """İşletim sisteminden CPU, RAM, Disk ve Ağ bilgilerini okuyan fonksiyon."""
@@ -103,37 +84,15 @@ def get_system_metrics():
     }
 
 if __name__ == "__main__":
-    print("Agent başlatıldı. Veritabanına (SQLite) bağlanılıyor...")
-    db_conn = init_db()  
-    cursor = db_conn.cursor()#cursor, veritabanında işlem yapmamızı sağlar. 
+    print("Agent başlatıldı. API'ye (FastAPI) veri gönderilecek...")
     print("Veritabanı hazır! Metrikler toplanıp kaydediliyor... (Durdurmak için CTRL+C)")
     '''
-    init_db() fonksiyonu kurulumcudur. 
-        Dosyaya gider, tablo yoksa sıfırdan oluşturur 
-        (CREATE TABLE IF NOT EXISTS), şemayı hazırlar ve hazır durumdaki bağlantıyı dışarıya teslim eder
-        (return conn).
-        db_conn ise açık kalan köprüdür. Program çalıştığı sürece 
-        (örneğin döngü içinde her saniye metrik yazarken) o köprünün açık kalması gerekir.
-        Eğer db_conn gibi bir değişkenle bağlantıyı tek seferde açık tutmazsan
-        döngü içinde her saniye sıfırdan veritabanına bağlanıp, tablo kontrolü yapıp, 
-        bağlantıyı kapatmak zorunda kalırsın.
+    Ajan (Monitor) Clean Architecture kuralları gereği veritabanına doğrudan yazmaz.
+    Metrikler HTTP POST ile /api/v1/metrics endpoint'ine iletilir.
     '''
     try:
         while True:
             metrics = get_system_metrics()
-            
-            # Veriyi tabloya ekliyoruz (INSERT SQL komutu)
-            cursor.execute('''
-                INSERT INTO system_metrics 
-                (zaman, cpu_yuzde, ram_yuzde, ram_kullanilan_gb, ram_toplam_gb, disk_yuzde, net_mbps)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                metrics['zaman'], metrics['cpu_yuzde'], metrics['ram_yuzde'],
-                metrics['ram_kullanilan_gb'], metrics['ram_toplam_gb'],
-                metrics['disk_yuzde'], metrics['net_mbps']
-            ))
-            
-            db_conn.commit() # Değişiklikleri kaydet
             
             print(f"[{metrics['zaman']}] CPU: %{metrics['cpu_yuzde']} | RAM: %{metrics['ram_yuzde']} | Disk: %{metrics['disk_yuzde']} | Net: {metrics['net_mbps']} MB/s")
             
@@ -145,7 +104,9 @@ if __name__ == "__main__":
                     "cpu_percent": metrics['cpu_yuzde'],
                     "ram_percent": metrics['ram_yuzde'],
                     "ram_used_gb": metrics['ram_kullanilan_gb'],
-                    "ram_total_gb": metrics['ram_toplam_gb']
+                    "ram_total_gb": metrics['ram_toplam_gb'],
+                    "disk_percent": metrics['disk_yuzde'],
+                    "net_mbps": metrics['net_mbps']
                 }
             }
             try:
@@ -174,5 +135,4 @@ if __name__ == "__main__":
             
             # psutil.cpu_percent zaten 1 saniye beklediği için ekstra sleep koymuyoruz, saniyede 1 kayıt alır.
     except KeyboardInterrupt:
-        print("\nAgent durduruldu. Veritabanı bağlantısı kapatılıyor...")
-        db_conn.close()
+        print("\nAgent durduruldu.")

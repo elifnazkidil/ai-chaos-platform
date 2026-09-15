@@ -256,6 +256,8 @@ class SaveMetricUseCase:
                 ram_percent=float(metrics["ram_percent"]),
                 ram_used_gb=float(metrics["ram_used_gb"]),
                 ram_total_gb=float(metrics["ram_total_gb"]),
+                disk_percent=float(metrics.get("disk_percent", 0.0)),
+                net_mbps=float(metrics.get("net_mbps", 0.0)),
                 timestamp=timestamp,
             )
         except ValueError as e:

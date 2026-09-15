@@ -51,8 +51,8 @@ class SQLiteMetricRepository(MetricRepositoryInterface):
                 """
                 INSERT OR IGNORE INTO metrics
                   (metric_id, agent_id, timestamp,
-                   cpu_percent, ram_percent, ram_used_gb, ram_total_gb)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                   cpu_percent, ram_percent, ram_used_gb, ram_total_gb, disk_percent, net_mbps)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     metric.metric_id,
@@ -62,6 +62,8 @@ class SQLiteMetricRepository(MetricRepositoryInterface):
                     metric.ram_percent,
                     metric.ram_used_gb,
                     metric.ram_total_gb,
+                    metric.disk_percent,
+                    metric.net_mbps,
                 ),
             )
             conn.commit()
@@ -104,7 +106,7 @@ class SQLiteMetricRepository(MetricRepositoryInterface):
             cursor = conn.execute(
                 """
                 SELECT metric_id, agent_id, timestamp, cpu_percent,
-                       ram_percent, ram_used_gb, ram_total_gb
+                       ram_percent, ram_used_gb, ram_total_gb, disk_percent, net_mbps
                 FROM metrics
                 ORDER BY timestamp DESC
                 LIMIT ?
@@ -120,6 +122,8 @@ class SQLiteMetricRepository(MetricRepositoryInterface):
                     ram_percent=row["ram_percent"],
                     ram_used_gb=row["ram_used_gb"],
                     ram_total_gb=row["ram_total_gb"],
+                    disk_percent=row["disk_percent"],
+                    net_mbps=row["net_mbps"],
                     timestamp=datetime.fromisoformat(row["timestamp"])
                 )
                 for row in rows

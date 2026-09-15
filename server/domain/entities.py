@@ -83,6 +83,8 @@ class Metric:
     ram_percent: float   # RAM kullanım yüzdesi  (0.0 – 100.0)
     ram_used_gb: float   # Kullanılan RAM miktarı (GB)
     ram_total_gb: float  # Toplam RAM kapasitesi  (GB)
+    disk_percent: float = 0.0  # Disk kullanım yüzdesi
+    net_mbps: float = 0.0      # Ağ kullanımı MB/s
 
     # ── Otomatik Doldurulacak Alanlar ────────────────────────
     metric_id: str = field(
@@ -139,6 +141,8 @@ class Metric:
             "ram_percent":  self.ram_percent,
             "ram_used_gb":  self.ram_used_gb,
             "ram_total_gb": self.ram_total_gb,
+            "disk_percent": self.disk_percent,
+            "net_mbps":     self.net_mbps,
             "ram_free_gb":  self.ram_free_gb,
             "is_high_cpu":  self.is_high_cpu,
             "is_high_ram":  self.is_high_ram,

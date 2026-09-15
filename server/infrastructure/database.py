@@ -62,7 +62,9 @@ CREATE TABLE IF NOT EXISTS metrics (
     cpu_percent   REAL NOT NULL,
     ram_percent   REAL NOT NULL,
     ram_used_gb   REAL NOT NULL,
-    ram_total_gb  REAL NOT NULL
+    ram_total_gb  REAL NOT NULL,
+    disk_percent  REAL DEFAULT 0.0,
+    net_mbps      REAL DEFAULT 0.0
 );
 """
 

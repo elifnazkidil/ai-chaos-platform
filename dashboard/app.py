@@ -608,18 +608,33 @@ def main():
                 st.info(msg)
 
         st.markdown("---")
-        st.subheader("📡 FastAPI Bağlantı Durumu")
-        try:
-            r = requests.get(f"{API_BASE}/", timeout=2)
-            if r.status_code == 200:
-                st.success(f"✅ FastAPI çalışıyor — {API_BASE}")
-            else:
-                st.error(f"❌ API erişilebilir ama hata döndü: {r.status_code}")
-        except requests.exceptions.RequestException:
-            st.error(
-                f"❌ FastAPI'ye ulaşılamıyor ({API_BASE})\n\n"
-                "Terminalde şunu çalıştır: `uvicorn server.api.main:app --reload`"
-            )
+        st.subheader("📡 Sistem Sağlık Durumu")
+        colA, colB = st.columns(2)
+        
+        with colA:
+            st.markdown("**FastAPI Sunucusu**")
+            try:
+                r = requests.get(f"{API_BASE}/", timeout=2)
+                if r.status_code == 200:
+                    st.success(f"✅ Aktif ({API_BASE})")
+                else:
+                    st.error(f"❌ API erişilebilir ama hata döndü: {r.status_code}")
+            except requests.exceptions.RequestException:
+                st.error(
+                    f"❌ Ulaşılamıyor\n\n`uvicorn server.api.main:app --reload`"
+                )
+                
+        with colB:
+            st.markdown("**Yapay Zeka (Ollama LLM)**")
+            try:
+                # Ollama varsayılan portu 11434
+                llm_r = requests.get("http://127.0.0.1:11434/", timeout=2)
+                if llm_r.status_code == 200:
+                    st.success("✅ Ollama LLM Aktif (11434)")
+                else:
+                    st.warning("⚠️ Ollama yanıt verdi ama beklenmedik durum.")
+            except requests.exceptions.RequestException:
+                st.error("❌ Ollama kapalı. `ollama serve` çalıştırın.")
 
         st.markdown("---")
         st.subheader("📜 Son Self-Healing Olayları")

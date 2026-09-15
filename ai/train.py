@@ -26,8 +26,8 @@ def load_data_from_db():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    # Tüm verileri çek (Tabloda cpu_percent ve ram_percent var)
-    cursor.execute("SELECT cpu_percent, ram_percent FROM metrics")
+    # Tüm verileri çek (Tabloda cpu_percent, ram_percent, disk_percent, net_mbps var)
+    cursor.execute("SELECT cpu_percent, ram_percent, disk_percent, net_mbps FROM metrics")
     rows = cursor.fetchall()
     conn.close()
     
@@ -43,9 +43,9 @@ def load_data_from_db():
     for row in rows:
         cpu = row[0]
         ram = row[1]
-        # Disk ve Net şimdilik DB'de yok, sentetik üretiyoruz.
-        disk = np.random.uniform(5, 40) 
-        net = np.random.uniform(5, 50)  
+        # Disk ve Net artık DB'den geliyor (yoksa veya null ise 0 kabul edelim)
+        disk = row[2] if row[2] is not None else 0.0
+        net = row[3] if row[3] is not None else 0.0
         
         # Etiketleme Mantığı (Labeling Logic):
         # RAM > 80% veya CPU > 85% ise Anomali (1), yoksa Normal (0)
