@@ -21,7 +21,7 @@ Pydantic v2 (FastAPI ile birlikte gelir) kullanılıyor.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Optional, List
 from pydantic import BaseModel, field_validator
 
 
@@ -66,6 +66,20 @@ class LLMDecisionOutput(BaseModel):
     """
     LLM'in bu karara olan güveni. 0.0 (belirsiz) ile 1.0 (çok güvenli) arası.
     Disk/Net verisi dummy ise dışarıdan 0.6'ya kapatılır (cap).
+    """
+
+    explanation: Optional[str] = None
+    """
+    LLM'in "neden bu tahmin yapıldı" açıklaması.
+    Feature importance bilgisiyle zenginleştirilmiş.
+    Optional: LLM yanit vermezse None kalır, skor diğer alanlardan okunur.
+    """
+
+    feature_impacts: Optional[List[dict]] = None
+    """
+    Hangi özelliğin tahmini ne kadar etkilediğini gösteren liste.
+    Örn: [{"feature": "RAM", "impact": 0.87, "direction": "artış"}, ...]
+    Optional: Explainability motoru çalışmazsa None kalır.
     """
 
     # ── Validators ──────────────────────────────────────────────

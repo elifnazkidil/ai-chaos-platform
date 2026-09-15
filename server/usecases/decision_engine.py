@@ -26,6 +26,7 @@ Structured Output Notu:
 import datetime
 from pathlib import Path
 from ai.neural_network import AnomalyTrainer
+from ai.explainability import FeatureExplainer
 from server.infrastructure.llm_adapter import generate_structured
 from agent.telegram_notifier import send_telegram_message
 from server.usecases.self_healing import log_event, init_db
@@ -80,6 +81,15 @@ class DecisionEngine:
         else:
             print(f"[DECISION ENGINE] Model dosyası bulunamadı: {MODEL_PATH}")
 
+        # FeatureExplainer: Ablation analizi ile feature importance
+        # Cache TTL 30 sn — her saniye gelen metrik için YSA tekrar çalışmaz
+        self.explainer = FeatureExplainer(
+            trainer=self.trainer,
+            cache_ttl_seconds=30,
+            model_loaded=self._model_loaded,
+        )
+
+
     # ───────────────────────────────────────────────────────
     # ANA METOD: evaluate()
     # ───────────────────────────────────────────────────────
@@ -125,15 +135,33 @@ class DecisionEngine:
         # ─── AŞAMA 2: Kural Motoru → Aksiyon Seç ─────────
         action, action_desc = self._select_action(anomaly_score)
 
+        # ─── AŞAMA 2.5: Feature Importance (XAI) ─────────
+        # Hangi özellik bu tahmini ne kadar etkiledi?
+        # Cache'li: 30 sn içinde aynı profil için YSA tekrar çalışmaz.
+        disk_val = disk if disk is not None else 10.0
+        net_val  = net  if net  is not None else 10.0
+        feature_impacts = self.explainer.explain_decision(
+            cpu=cpu, ram=ram, disk=disk_val, net=net_val
+        )
+        # LLM prompt'una eklenecek özet metin (çok uzamasın diye max 3 özellik)
+        feature_importance_text = self.explainer.format_for_prompt(feature_impacts)
+
         # ─── AŞAMA 3: LLM Structured Output ──────────────
         # LLMDecisionOutput: risk_level, prediction_summary,
-        #                    recommended_action, confidence_score
+        #                    recommended_action, confidence_score,
+        #                    explanation (feature importance ile)
         llm_output = self._generate_explanation(
             cpu=cpu, ram=ram, ram_used_gb=ram_used_gb,
             ram_total_gb=ram_total_gb, agent_id=agent_id,
             anomaly_score=anomaly_score, action=action,
             has_full_features=has_full_features,
+            feature_importance_text=feature_importance_text,
         )
+
+        # Feature impacts'i llm_output nesnesine de ekle (API'de erişilebilsin)
+        llm_output = llm_output.model_copy(update={
+            "feature_impacts": [fi.to_dict() for fi in feature_impacts]
+        })
 
         # Eski alanla uyumluluk: llm_explanation = prediction_summary string'i
         llm_explanation = llm_output.prediction_summary
@@ -243,10 +271,16 @@ class DecisionEngine:
         anomaly_score,
         action,
         has_full_features: bool = False,
+        feature_importance_text: str = "",
     ) -> "LLMDecisionOutput":
         """
         Qwen LLM'e İngilizce prompt gönderir, Pydantic schema ile doğrulanmış
         LLMDecisionOutput döndürür.
+
+        feature_importance_text:
+          FeatureExplainer.format_for_prompt() çıktısı.
+          Prompt'a "En etkili faktörler: ..." olarak eklenir.
+          LLM bu bağlamla "neden bu tahmin yapıldı" sorusunu yanıtlar.
 
         Ollama çalışmıyorsa veya JSON parse/validasyon başarısız olursa
         fallback_output(action) döner — sistem DURMAZ.
@@ -256,10 +290,17 @@ class DecisionEngine:
         """
         from server.domain.llm_schema import LLMDecisionOutput
 
+        # Feature importance bağlamını prompt'a ekle (max 3-5 satır)
+        importance_context = (
+            f"\n{feature_importance_text}" if feature_importance_text else ""
+        )
+
         prompt = (
-            f"System metrics for '{agent_id}': CPU={cpu}%, RAM={ram}%. "
-            f"Anomaly score: {anomaly_score:.2f}. Recommended action: {action}. "
-            f"Explain the situation and recommendation in Turkish."
+            f"System: '{agent_id}'. CPU={cpu}%, RAM={ram}%. "
+            f"Anomaly score: {anomaly_score:.2f}. Recommended action: {action}."
+            f"{importance_context}\n"
+            f"Explain the situation and recommendation in Turkish. "
+            f"Include which factor contributed most to this decision."
         )
 
         # generate_structured: JSON talimatı ekler, markdown soyar,
@@ -267,9 +308,10 @@ class DecisionEngine:
         return generate_structured(
             prompt=prompt,
             action=action,
-            max_tokens=300,
+            max_tokens=350,
             has_full_features=has_full_features,
         )
+
 
     # ───────────────────────────────────────────────────────
     # AŞAMA 4: Telegram bildirimi
