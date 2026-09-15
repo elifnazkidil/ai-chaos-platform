@@ -15,7 +15,13 @@
 
 Bu platform; yüksek erişilebilirlik gerektiren **FinTech ve Bankacılık sunucularını** saniye saniye izleyen, kasıtlı olarak enjekte edilen bellek sızıntılarını (Memory Leak) **Yapay Sinir Ağları (YSA)** ile saatler öncesinden tespit eden ve **Clean Architecture** prensipleriyle tasarlanmış merkezi sunucusu üzerinden **Otomatik ERP İş Emirleri (Work Order)** üreterek sistem çökmesini engelleyen yapay zeka destekli bir önleyici bakım (Proactive Mitigation) platformudur. 
 
-Ayrıca sisteme entegre edilen **Qwen (Ollama) LLM** destekli Karar Motoru sayesinde; YSA'nın ürettiği anomali skorları kural motoruyla işlenir ve otonom kararlar **LLM tarafından açıklanarak** (sorup/cevaplama şeklinde) Telegram üzerinden zengin raporlar olarak iletilir.
+### 🌟 Temel Yetenekler (Core Capabilities)
+
+- **Genişletilmiş Telemetri Analizi**: `psutil` üzerinden toplanan CPU, RAM, Disk Kullanımı ve Ağ G/Ç verileri, çok boyutlu yapay sinir ağı (YSA) girdi vektörlerini besleyerek anomalileri daha geniş bir bağlamda değerlendirir.
+- **XAI (Explainable AI) & Ablation Study**: Platform yalnızca skorsal tahminler üretmekle kalmaz; arka planda koşan *Ablation Study* motoru ile anomaliye sebep olan kaynağı nedenselliğiyle açıklar (Örn: "Tahmine %47 oranında CPU darbogazı etki etmiştir").
+- **LLM Destekli Otonom Karar Motoru (Structured Output)**: YSA'nın ürettiği XAI verileri ve risk metrikleri, Pydantic şemasıyla çalışan **Qwen 2.5 / Ollama** destekli bir LLM Karar Motoru tarafından yorumlanır. Çıktılar yapılandırılmış (Structured JSON) formattadır, böylece sıfır halüsinasyonla eyleme dönüştürülebilir.
+- **Dinamik Streamlit Dashboard**: Karar motorunun analizleri (LLM Güven Skoru, Feature Etki Düzeyleri vb.) gerçek zamanlı Dashboard arayüzünde canlı grafikler ve ilerleme çubuklarıyla (progress bars) profesyonelce görselleştirilir.
+- **Self-Healing & ERP Entegrasyonu**: Yüksek riskli anomali durumlarında Telegram üzerinden formatlı raporlar gönderilir ve ilgili ERP sisteminde (Örn: SAP/Oracle) otomatik iş emri açılarak otonom self-healing aksiyonları başlatılır.
 
 ---
 
@@ -24,15 +30,7 @@ Ayrıca sisteme entegre edilen **Qwen (Ollama) LLM** destekli Karar Motoru sayes
 <!-- ![Platform Live Demo](docs/demo.gif) -->
 *(Demo yakında eklenecek)*
 
-*(Canlı Dashboard: RAM Metrik Akışı, YSA Tahmin Eğrisi, Otomatik ERP Bilet Üretimi ve Kaos Kontrol Paneli)*
-
----
-
-## ✨ Yeni Özellikler (Recent Updates)
-* **LLM Structured Output (JSON Şeması)**: Qwen 2.5/Ollama entegrasyonu, serbest metin yerine `Pydantic` tabanlı katı bir JSON şemasına (Structured Output) dönüştürüldü. Fallback mekanizmaları ve markdown temizleyici ile %100 istikrarlı kararlar.
-* **XAI (Explainable AI) - Feature Importance**: `ai/explainability.py` içerisinde geliştirilen **Ablation Study** (Feature Explainer) motoruyla sistem, "Neden çökecek?" sorusuna sadece skorla değil, "CPU bu tahmini %47 etkiledi" şeklinde *nedensellik (causality)* ile yanıt veriyor.
-* **Tam Kapsamlı Telemetri**: `psutil` kullanılarak CPU ve RAM'e ek olarak **Disk Kullanımı (%)** ve **Ağ Tüketimi (MB/s)** sensörleri `monitor.py` üzerine entegre edildi. DB şemasına dahil edilerek YSA modelinin girdi vektörleri genişletildi.
-* **Gelişmiş Streamlit Dashboard**: 🧠 YSA Tahmin Paneline "🤖 LLM Yorumu & XAI Feature Impacts" bölümü eklendi. LLM'in anlık güven skoru (Confidence) ve özellik etkileri ilerleme çubuklarıyla (progress bars) canlı görselleştirildi.
+*(Canlı Dashboard: RAM Metrik Akışı, YSA Tahmin Eğrisi, Otomatik ERP Bilet Üretimi, XAI Etki Analizleri ve Kaos Kontrol Paneli)*
 
 ---
 
