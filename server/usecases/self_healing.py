@@ -2,6 +2,13 @@ import psutil
 import datetime
 import requests
 import sqlite3
+from pathlib import Path
+
+# database.py ile aynı yöntemi kullanıyoruz: hangi dizinden çalıştırılırsa çalıştırılsın
+# her zaman projenin kök dizinindeki metrics.db'yi açar.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_DB_PATH = str(_PROJECT_ROOT / "metrics.db")
+
 #bu dosya ysa ile sistemdeki bellek sızıntısı tespit edildikten sonra devreye girer.
 #psutil kütüphanesi ile sistemdeki prosesleri izler.
 
@@ -16,7 +23,7 @@ WHITELIST = {'postgres', 'java', 'python', 'mysqld', 'redis-server'}
 def init_db():
     """Veritabanı tablolarını oluşturur (Başlangıçta bir kez çağrılmalı)."""
     try:
-        with sqlite3.connect('metrics.db') as conn:
+        with sqlite3.connect(_DB_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS event_logs (
@@ -32,7 +39,7 @@ def init_db():
 def log_event(action, detail):
     timestamp = datetime.datetime.now().isoformat()#Yapılan self-healing aksiyonunu zaman damgalı olarak (event log) kaydeder.
     try:
-        with sqlite3.connect('metrics.db') as conn:
+        with sqlite3.connect(_DB_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT INTO event_logs (timestamp, action, detail)
