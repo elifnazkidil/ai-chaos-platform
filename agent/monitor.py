@@ -69,7 +69,9 @@ def init_db():
             cpu_yuzde REAL,
             ram_yuzde REAL,
             ram_kullanilan_gb REAL,
-            ram_toplam_gb REAL
+            ram_toplam_gb REAL,
+            disk_yuzde REAL,
+            net_mbps REAL
         )
     ''')
     conn.commit()#veritabanına kaydet.   
@@ -122,13 +124,18 @@ if __name__ == "__main__":
             
             # Veriyi tabloya ekliyoruz (INSERT SQL komutu)
             cursor.execute('''
-                INSERT INTO system_metrics (zaman, cpu_yuzde, ram_yuzde, ram_kullanilan_gb, ram_toplam_gb)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (metrics['zaman'], metrics['cpu_yuzde'], metrics['ram_yuzde'], metrics['ram_kullanilan_gb'], metrics['ram_toplam_gb']))
+                INSERT INTO system_metrics 
+                (zaman, cpu_yuzde, ram_yuzde, ram_kullanilan_gb, ram_toplam_gb, disk_yuzde, net_mbps)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                metrics['zaman'], metrics['cpu_yuzde'], metrics['ram_yuzde'],
+                metrics['ram_kullanilan_gb'], metrics['ram_toplam_gb'],
+                metrics['disk_yuzde'], metrics['net_mbps']
+            ))
             
             db_conn.commit() # Değişiklikleri kaydet
             
-            print(f"[{metrics['zaman']}] Veritabanına kaydedildi -> CPU: %{metrics['cpu_yuzde']} | RAM: %{metrics['ram_yuzde']}")
+            print(f"[{metrics['zaman']}] CPU: %{metrics['cpu_yuzde']} | RAM: %{metrics['ram_yuzde']} | Disk: %{metrics['disk_yuzde']} | Net: {metrics['net_mbps']} MB/s")
             
             # Her durumda API'ye metrikleri gönder (Dashboard'da görebilmek için)
             payload_metrics = {
