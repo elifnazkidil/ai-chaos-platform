@@ -28,6 +28,14 @@ Ayrıca sisteme entegre edilen **Qwen (Ollama) LLM** destekli Karar Motoru sayes
 
 ---
 
+## ✨ Yeni Özellikler (Recent Updates)
+* **LLM Structured Output (JSON Şeması)**: Qwen 2.5/Ollama entegrasyonu, serbest metin yerine `Pydantic` tabanlı katı bir JSON şemasına (Structured Output) dönüştürüldü. Fallback mekanizmaları ve markdown temizleyici ile %100 istikrarlı kararlar.
+* **XAI (Explainable AI) - Feature Importance**: `ai/explainability.py` içerisinde geliştirilen **Ablation Study** (Feature Explainer) motoruyla sistem, "Neden çökecek?" sorusuna sadece skorla değil, "CPU bu tahmini %47 etkiledi" şeklinde *nedensellik (causality)* ile yanıt veriyor.
+* **Tam Kapsamlı Telemetri**: `psutil` kullanılarak CPU ve RAM'e ek olarak **Disk Kullanımı (%)** ve **Ağ Tüketimi (MB/s)** sensörleri `monitor.py` üzerine entegre edildi. DB şemasına dahil edilerek YSA modelinin girdi vektörleri genişletildi.
+* **Gelişmiş Streamlit Dashboard**: 🧠 YSA Tahmin Paneline "🤖 LLM Yorumu & XAI Feature Impacts" bölümü eklendi. LLM'in anlık güven skoru (Confidence) ve özellik etkileri ilerleme çubuklarıyla (progress bars) canlı görselleştirildi.
+
+---
+
 ## 🏛️ Sistem Mimarisi (Architecture Diagram)
 
 Projemiz Uncle Bob'un **Clean Architecture** prensiplerine göre tamamen modüler katmanlara ayrılmıştır:
