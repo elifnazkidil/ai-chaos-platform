@@ -26,8 +26,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-#  time.sleep+st.rerun yerine st_autorefresh — 5sn'de bir yeniler, sayfa donmaz
-st_autorefresh(interval=5000, key="dashboard_autorefresh")
+#  time.sleep+st.rerun yerine st_autorefresh — 15sn'de bir yeniler, sayfa donmaz
+st_autorefresh(interval=15000, key="dashboard_autorefresh")
 
 # ── Sabitler ───────────────────────────────────────────────────
 API_BASE = "http://localhost:8000"
@@ -44,7 +44,7 @@ def get_db_connection():
 
 
 #  FastAPI /api/v1/metrics/latest'ten veri çekme
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(ttl=10, show_spinner=False)
 def get_metrics_from_api(limit: int = 100) -> pd.DataFrame:
     """
     Önce FastAPI'dan, erişilemezse doğrudan DB'den okur.
@@ -76,7 +76,7 @@ def get_metrics_from_api(limit: int = 100) -> pd.DataFrame:
     return df
 
 
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(ttl=10, show_spinner=False)
 def get_work_orders() -> pd.DataFrame:
     """İş emirlerini DB'den okur."""
     conn = get_db_connection()
@@ -92,7 +92,7 @@ def get_work_orders() -> pd.DataFrame:
 
 
 # /api/v1/predictions endpoint'inden YSA tahminleri
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(ttl=10, show_spinner=False)
 def get_predictions(limit: int = 1) -> list:
     """FastAPI /api/v1/predictions'tan YSA tahminlerini çeker."""
     try:
@@ -104,7 +104,7 @@ def get_predictions(limit: int = 1) -> list:
     return []
 
 
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(ttl=10, show_spinner=False)
 def get_llm_output() -> dict:
     """En son LLM değerlendirmesini çeker."""
     try:
@@ -119,7 +119,7 @@ def get_llm_output() -> dict:
 
 
 #event_logs'u API'den çek
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(ttl=10, show_spinner=False)
 def get_event_logs() -> pd.DataFrame:
     """self-healing event_logs'u FastAPI üzerinden çeker; yoksa DB'den."""
     try:
