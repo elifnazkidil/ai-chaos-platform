@@ -215,7 +215,7 @@ class DatabaseManager:
     #           db.close()    ← hata olsa bile kapat!
     #
     #     Context Manager bunu otomatik yapar. "finally" bloğunu
-    #     sen yazmak zorunda kalmazsin, __exit__ her zaman çalişir.
+    #     sen yazmak zorunda kalmazsin, __exit__ hep çalişir.
     #
     #   __exit__ parametreleri:
     #     exc_type → Hata varsa hata sinifi (ValueError gibi), yoksa None
@@ -270,4 +270,4 @@ def get_db() -> DatabaseManager:
     if _db_manager is None:     # İlk kez mi çağriliyor?
         _db_manager = DatabaseManager()   # Evet → yeni nesne oluştur
         _db_manager.initialize_schema()   # Tablolari yarat (yoksa)
-    return _db_manager          # Her zaman ayni nesneyi döndür
+    return _db_manager          # hep ayni nesneyi döndür
