@@ -8,6 +8,56 @@ import time
 from datetime import datetime
 import sqlite3
 
+# ────────────────────────────────────────────────────────────────
+# Ağ Trafiği Hızı (önceki okuma saklanır, fark hesaplanır)
+# psutil.net_io_counters() kümülatif bayt sayısı döner.
+# MB/s = (bu_anki_toplam - önceki_toplam) / geçen_süre
+# ────────────────────────────────────────────────────────────────
+_prev_net_io = None     # Önceki okuma
+_prev_net_time = None   # Önceki okuma zamanı
+
+
+def _get_net_mbps() -> float:
+    """
+    Ağ trafiğini MB/s cinsinden hesaplar.
+
+    Nasıl çalışır?
+      - psutil.net_io_counters(): tüm NIC'lerdeki toplam byte sayısını döner.
+      - Bu kümülatif bir sayıçtır (bilgisayar açılışından bu yana).
+      - İki okuma arasındaki fark / geçen süre = MB/s
+      - İlk çağrıda önceki okuma yok → 0.0 döner (ilk ölçüm atlanır).
+
+    Returns:
+        float: 0.0 ile 100.0 arası normalize edilmiş değer
+    """
+    global _prev_net_io, _prev_net_time
+
+    now = time.time()
+    net_io = psutil.net_io_counters()
+
+    if _prev_net_io is None or _prev_net_time is None:
+        # İlk çağrı: referans noktasını kaydet, 0.0 dön
+        _prev_net_io = net_io
+        _prev_net_time = now
+        return 0.0
+
+    elapsed = now - _prev_net_time
+    if elapsed <= 0:
+        return 0.0
+
+    bytes_diff = (
+        (net_io.bytes_sent + net_io.bytes_recv)
+        - (_prev_net_io.bytes_sent + _prev_net_io.bytes_recv)
+    )
+    mbps = bytes_diff / (1024 * 1024 * elapsed)  # Byte/s → MB/s
+
+    # Referans noktasını güncelle
+    _prev_net_io = net_io
+    _prev_net_time = now
+
+    # 100.0 MB/s sınırı (ağ kartların pratikte ulaşabileği makul üst sınır)
+    return min(round(mbps, 3), 100.0)
+
 def init_db():
     """SQLite veritabanını ve tabloyu oluşturur."""
     conn = sqlite3.connect('metrics.db')
@@ -26,10 +76,17 @@ def init_db():
     return conn
 
 def get_system_metrics():
-    """İşletim sisteminden CPU ve RAM bilgilerini okuyan fonksiyon."""
+    """İşletim sisteminden CPU, RAM, Disk ve Ağ bilgilerini okuyan fonksiyon."""
     cpu_percent = psutil.cpu_percent(interval=1)#1 saniye aralıklarla CPU kullanımını ölçer.
     #bu sayede daha doğru sonuçlar elde ederiz. 
     memory = psutil.virtual_memory()#RAM bilgilerini alır.  
+    
+    # Disk kullanım yüzdesi (kök dizin → Windows'ta C:\ döner)
+    disk = psutil.disk_usage('/')
+    disk_percent = round(disk.percent, 1)
+    
+    # Ağ trafiği MB/s (bir önceki okumaya göre fark hesaplanır)
+    net_mbps = _get_net_mbps()
     
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")#şu anki zamanı yazar.SQLite'taki TEXT sütununa uygun şekilde 2026-08-18 11:33:24 formatında biçimlendirir.  
     
@@ -38,7 +95,9 @@ def get_system_metrics():
         "cpu_yuzde": cpu_percent,
         "ram_yuzde": memory.percent,
         "ram_kullanilan_gb": round(memory.used / (1024 ** 3), 2),
-        "ram_toplam_gb": round(memory.total / (1024 ** 3), 2)
+        "ram_toplam_gb": round(memory.total / (1024 ** 3), 2),
+        "disk_yuzde": disk_percent,
+        "net_mbps": net_mbps,
     }
 
 if __name__ == "__main__":
@@ -96,7 +155,10 @@ if __name__ == "__main__":
                         "ram_percent": metrics['ram_yuzde'],
                         "ram_used_gb": metrics['ram_kullanilan_gb'],
                         "ram_total_gb": metrics['ram_toplam_gb'],
-                        "agent_id": "server-prod-01"
+                        "agent_id": "server-prod-01",
+                        # Gerçek disk/net → YSA'ya 4 feature gider, confidence cap kalkar
+                        "disk_percent": metrics['disk_yuzde'],
+                        "net_mbps": metrics['net_mbps'],
                     }
                     resp = requests.post("http://127.0.0.1:8000/api/v1/evaluate", json=payload_eval, timeout=30)
                     print(f"    -> AI Yanıtı: {resp.status_code}")

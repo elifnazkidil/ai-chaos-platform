@@ -4,24 +4,29 @@ server/usecases/decision_engine.py
 Karar Açıklama Motoru (Decision Explanation Engine)
 ====================================================
 YSA anomali tespiti sonrası kural motoruyla aksiyon seçer,
-ardından Qwen LLM ile bu kararın nedenini Türkçe açıklar
-ve Telegram'a zengin bildirim gönderir.
+ardından Qwen LLM ile bu kararın nedenini yapılandırılmış (structured)
+JSON formatında alır ve Telegram'a zengin bildirim gönderir.
 
 3 Aşamalı AI Pipeline:
   1. YSA (AnomalyTrainer.predict) → anomali skoru üretir
   2. Kural Motoru → skora göre aksiyon seçer
-  3. LLM (Qwen 2.5) → seçilen aksiyonu Türkçe açıklar
+  3. LLM (Qwen 2.5) → seçilen aksiyonu Pydantic schema ile yapılandırılmış açıklar
 
 Mimari Notu:
   LLM karar VERMIYOR, kararı AÇIKLIYOR.
   Karar kural motorunda (deterministik), açıklama LLM'de (generatif).
   Bu sayede LLM çöktüğünde sistem yine çalışır (fallback).
+
+Structured Output Notu:
+  _generate_explanation() artık serbest metin yerine LLMDecisionOutput döndürüyor.
+  evaluate() sonuç dict'inde HEM llm_explanation (str, eski uyumluluk) HEM llm_structured
+  (dict, yeni) var → dashboard bozulmadan yeni özellik eklendi.
 """
 
 import datetime
 from pathlib import Path
 from ai.neural_network import AnomalyTrainer
-from server.infrastructure.llm_adapter import generate as llm_generate
+from server.infrastructure.llm_adapter import generate_structured
 from agent.telegram_notifier import send_telegram_message
 from server.usecases.self_healing import log_event, init_db
 
@@ -78,13 +83,21 @@ class DecisionEngine:
     # ───────────────────────────────────────────────────────
     # ANA METOD: evaluate()
     # ───────────────────────────────────────────────────────
-    def evaluate(self, cpu: float, ram: float, ram_used_gb: float,
-                 ram_total_gb: float, agent_id: str = "agent-01") -> dict:
+    def evaluate(
+        self,
+        cpu: float,
+        ram: float,
+        ram_used_gb: float,
+        ram_total_gb: float,
+        agent_id: str = "agent-01",
+        disk: float | None = None,
+        net: float | None = None,
+    ) -> dict:
         """
         Tam AI pipeline'ı çalıştırır:
-          1. YSA → anomali skoru
+          1. YSA → anomali skoru (disk/net gerçek ise 4 özellik, dummy ise 2)
           2. Kural Motoru → aksiyon seç
-          3. LLM → Türkçe açıklama üret
+          3. LLM → Pydantic schema ile structured output (Türkçe)
           4. Telegram → bildirim gönder
           5. DB → event_logs'a kaydet
 
@@ -94,24 +107,36 @@ class DecisionEngine:
             ram_used_gb: Kullanılan RAM (GB)
             ram_total_gb: Toplam RAM (GB)
             agent_id: Ajan kimliği
+            disk: Disk kullanım yüzdesi (None → dummy 10.0 kullanılır)
+            net: Ağ trafiği MB/s (None → dummy 10.0 kullanılır)
 
         Returns:
-            dict: Pipeline sonucu (skor, aksiyon, açıklama, telegram durumu)
+            dict: Pipeline sonucu.
+                  llm_explanation → str (eski uyumluluk, prediction_summary)
+                  llm_structured  → dict (yeni, tam LLMDecisionOutput)
         """
+        # Gerçek disk/net var mı?
+        has_full_features = disk is not None and net is not None
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # ─── AŞAMA 1: YSA Anomali Skoru ──────────────────
-        anomaly_score = self._get_anomaly_score(cpu, ram)
+        anomaly_score = self._get_anomaly_score(cpu, ram, disk=disk, net=net)
 
         # ─── AŞAMA 2: Kural Motoru → Aksiyon Seç ─────────
         action, action_desc = self._select_action(anomaly_score)
 
-        # ─── AŞAMA 3: LLM Açıklama (opsiyonel) ───────────
-        llm_explanation = self._generate_explanation(
+        # ─── AŞAMA 3: LLM Structured Output ──────────────
+        # LLMDecisionOutput: risk_level, prediction_summary,
+        #                    recommended_action, confidence_score
+        llm_output = self._generate_explanation(
             cpu=cpu, ram=ram, ram_used_gb=ram_used_gb,
             ram_total_gb=ram_total_gb, agent_id=agent_id,
-            anomaly_score=anomaly_score, action=action
+            anomaly_score=anomaly_score, action=action,
+            has_full_features=has_full_features,
         )
+
+        # Eski alanla uyumluluk: llm_explanation = prediction_summary string'i
+        llm_explanation = llm_output.prediction_summary
 
         # ─── AŞAMA 4: Telegram Bildirimi ─────────────────
         telegram_sent = self._send_notification(
@@ -135,14 +160,20 @@ class DecisionEngine:
                 "cpu_percent": cpu,
                 "ram_percent": ram,
                 "ram_used_gb": ram_used_gb,
-                "ram_total_gb": ram_total_gb
+                "ram_total_gb": ram_total_gb,
+                "disk_percent": disk,       # None ise dummy kullanıldı
+                "net_mbps": net,            # None ise dummy kullanıldı
             },
             "ysa_score": round(anomaly_score, 4),
             "action": action,
             "action_description": action_desc,
+            # llm_explanation → eski alan, string (geriye dönük uyumlu)
             "llm_explanation": llm_explanation,
+            # llm_structured → yeni alan, tam Pydantic schema dict
+            "llm_structured": llm_output.to_dict(),
             "telegram_sent": telegram_sent,
-            "model_loaded": self._model_loaded
+            "model_loaded": self._model_loaded,
+            "has_full_features": has_full_features,
         }
 
         print(f"[DECISION] Skor: {anomaly_score:.4f} -> Aksiyon: {action}")
@@ -151,10 +182,20 @@ class DecisionEngine:
     # ───────────────────────────────────────────────────────
     # AŞAMA 1: YSA'dan anomali skoru al
     # ───────────────────────────────────────────────────────
-    def _get_anomaly_score(self, cpu: float, ram: float) -> float:
+    def _get_anomaly_score(
+        self,
+        cpu: float,
+        ram: float,
+        disk: float | None = None,
+        net: float | None = None,
+    ) -> float:
         """
         Eğitilmiş YSA modeline metrikleri verip anomali skoru alır.
         Model yüklü değilse basit kural tabanlı fallback kullanır.
+
+        disk/net parametresi:
+          None   → dummy değer (10.0) kullanılır — eski davranış
+          float  → gerçek veri — YSA daha doğru sonuç üretir
 
         Returns:
             float: 0.0 (normal) ile 1.0 (kritik anomali) arası skor
@@ -164,8 +205,11 @@ class DecisionEngine:
             return min((cpu / 100 * 0.4) + (ram / 100 * 0.6), 1.0)
 
         import numpy as np
-        # Disk ve Network sentetik (DB'de yok), sabit düşük değer ver
-        features = np.array([[cpu, ram, 10.0, 10.0]], dtype=np.float32)
+        # Gerçek disk/net varsa kullan, yoksa dummy değer (10.0)
+        disk_val = disk if disk is not None else 10.0
+        net_val  = net  if net  is not None else 10.0
+
+        features = np.array([[cpu, ram, disk_val, net_val]], dtype=np.float32)
         scores = self.trainer.predict(features)
         return float(scores[0])
 
@@ -189,36 +233,43 @@ class DecisionEngine:
     # ───────────────────────────────────────────────────────
     # AŞAMA 3: LLM açıklama üret
     # ───────────────────────────────────────────────────────
-    def _generate_explanation(self, cpu, ram, ram_used_gb, ram_total_gb,
-                              agent_id, anomaly_score, action) -> str:
+    def _generate_explanation(
+        self,
+        cpu,
+        ram,
+        ram_used_gb,
+        ram_total_gb,
+        agent_id,
+        anomaly_score,
+        action,
+        has_full_features: bool = False,
+    ) -> "LLMDecisionOutput":
         """
-        Qwen LLM'e İngilizce prompt gönderip Türkçe açıklama alır.
-        Ollama çalışmıyorsa veya timeout olursa fallback mesajı döner.
+        Qwen LLM'e İngilizce prompt gönderir, Pydantic schema ile doğrulanmış
+        LLMDecisionOutput döndürür.
+
+        Ollama çalışmıyorsa veya JSON parse/validasyon başarısız olursa
+        fallback_output(action) döner — sistem DURMAZ.
 
         Returns:
-            str: Türkçe açıklama (LLM veya fallback)
+            LLMDecisionOutput: Structured output (LLM veya fallback)
         """
+        from server.domain.llm_schema import LLMDecisionOutput
+
         prompt = (
             f"System metrics for '{agent_id}': CPU={cpu}%, RAM={ram}%. "
-            f"Anomaly score: {anomaly_score:.2f}. Action: {action}. "
-            f"Explain why in 2 simple sentences."
+            f"Anomaly score: {anomaly_score:.2f}. Recommended action: {action}. "
+            f"Explain the situation and recommendation in Turkish."
         )
 
-        explanation = llm_generate(prompt, max_tokens=150)
-
-        if explanation:
-            return explanation.strip()
-
-        # ─── Fallback: LLM yoksa statik açıklama ─────────
-        # Bu sayede Ollama çöktüğünde DecisionEngine ÇÖKMEZ
-        fallback_messages = {
-            "MONITOR": "Sistem metrikleri normal seviyelerde. YSA modeli anormallik tespit etmedi, izlemeye devam ediliyor.",
-            "ALERT": "YSA modeli hafif bir anomali tespit etti. Metrikler dikkat gerektiriyor, operasyon ekibine bildirim gönderildi.",
-            "SCALE_UP": "YSA modeli belirgin bir anomali tespit etti. Kaynak tüketimi artış eğiliminde, kapasite artırımı öneriliyor.",
-            "RESTART": "YSA modeli yüksek risk skoru üretti. Sistemde ciddi anormallik var, ilgili servisin yeniden başlatılması gerekiyor.",
-            "KILL_PROCESS": "YSA modeli kritik seviyede anomali tespit etti. Bellek sızıntısı yapan prosesin derhal sonlandırılması gerekiyor.",
-        }
-        return fallback_messages.get(action, "Sistem durumu değerlendiriliyor.")
+        # generate_structured: JSON talimatı ekler, markdown soyar,
+        # Pydantic doğrular, hata → fallback_output(action) döner
+        return generate_structured(
+            prompt=prompt,
+            action=action,
+            max_tokens=300,
+            has_full_features=has_full_features,
+        )
 
     # ───────────────────────────────────────────────────────
     # AŞAMA 4: Telegram bildirimi

@@ -226,12 +226,19 @@ async def get_predictions(limit: int = 50):
 async def evaluate_decision(payload: Dict[str, Any]):
     """AI Karar Motoru (Decision Engine) uç noktası. Metrikleri alıp aksiyon ve LLM açıklaması döner."""
     try:
+        # disk_percent / net_mbps varsa gerçek değer olarak ilet (has_full_features=True)
+        # yoksa None gönder → DecisionEngine dummy değer (10.0) kullanır
+        disk = float(payload["disk_percent"]) if payload.get("disk_percent") is not None else None
+        net  = float(payload["net_mbps"])     if payload.get("net_mbps")     is not None else None
+
         result = decision_engine_uc.evaluate(
             cpu=float(payload.get("cpu_percent", 0.0)),
             ram=float(payload.get("ram_percent", 0.0)),
             ram_used_gb=float(payload.get("ram_used_gb", 0.0)),
             ram_total_gb=float(payload.get("ram_total_gb", 16.0)),
-            agent_id=payload.get("agent_id", "unknown")
+            agent_id=payload.get("agent_id", "unknown"),
+            disk=disk,
+            net=net,
         )
         return {"success": True, "result": result}
     except Exception as e:
