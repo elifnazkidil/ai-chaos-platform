@@ -50,8 +50,11 @@ ACTION_TABLE = [
     (0.9, "RESTART",       "İlgili servisi yeniden başlat"),
     (1.1, "KILL_PROCESS",  "Sızıntı yapan prosesi sonlandır"),  # 1.1 = her zaman yakalanır
 ]
-
-
+#Bu tablo ai eğitim süreci (Fine-Tuning) değil, ai'in ürettiği sonuçları güvenli bir şekilde dizginlemek 
+#ve kontrol altında tutmak için yazılmış katı bir güvenlik kilididir (Guardrail/Rule Engine).
+#Guardrail :  insan davranışlarını kontrol eden düzenleyici kurumdur. 
+#Bu sistemde guardrail, LLM'in "keyfi" veya "mantıksız" kararlar almasını önleyen bir kalkan görevi görür.
+#ornegin ai sonucu 0.82 bulduysa scale_up demesidir. Ancak 0.82 için de 0.45 için de restart dememesi için bu tabloyu kullanıyoruz. restart demek servisi yeniden başlatmak demektir. Bu da hem riskli hem de gereksizdir.
 class DecisionEngine:
     """
     YSA + Kural Motoru + LLM'i birleştiren orkestratör.
@@ -91,7 +94,7 @@ class DecisionEngine:
 
 
     # ───────────────────────────────────────────────────────
-    # ANA METOD: evaluate()
+    # ANA METOD: evaluate() degerlednirmek()
     # ───────────────────────────────────────────────────────
     def evaluate(
         self,
@@ -105,7 +108,7 @@ class DecisionEngine:
     ) -> dict:
         """
         Tam AI pipeline'ı çalıştırır:
-          1. YSA → anomali skoru (disk/net gerçek ise 4 özellik, dummy ise 2)
+          1. YSA → anomali skoru (disk/net gerçek ise 4 özellik, dummy ise 2.input_size=4 ama sadece CPU ve RAM verilerini gönderebilir ahata firlatir cokmemesi icin dummy veri koyariz)
           2. Kural Motoru → aksiyon seç
           3. LLM → Pydantic schema ile structured output (Türkçe)
           4. Telegram → bildirim gönder
@@ -128,8 +131,8 @@ class DecisionEngine:
         # Gerçek disk/net var mı?
         has_full_features = disk is not None and net is not None
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # ─── AŞAMA 1: YSA Anomali Skoru ──────────────────
+#has_full_features -> eger  her 2 donemde eger hem disk hem net verisi gercek ise true aliyor. yoksa false aliyor. 
+# ─── AŞAMA 1: YSA Anomali Skoru ──────────────────
         anomaly_score = self._get_anomaly_score(cpu, ram, disk=disk, net=net)
 
         # ─── AŞAMA 2: Kural Motoru → Aksiyon Seç ─────────
@@ -138,7 +141,7 @@ class DecisionEngine:
         # ─── AŞAMA 2.5: Feature Importance (XAI) ─────────
         # Hangi özellik bu tahmini ne kadar etkiledi?
         # Cache'li: 30 sn içinde aynı profil için YSA tekrar çalışmaz.
-        disk_val = disk if disk is not None else 10.0
+        disk_val = disk if disk is not None else 10.0#None ise 10.0 ata ki hata fırlatmasın
         net_val  = net  if net  is not None else 10.0
         feature_impacts = self.explainer.explain_decision(
             cpu=cpu, ram=ram, disk=disk_val, net=net_val
@@ -157,11 +160,17 @@ class DecisionEngine:
             has_full_features=has_full_features,
             feature_importance_text=feature_importance_text,
         )
-
+        #niye aynı şeyleri eşitledik ? llm_output nesnesini alıp 
+        #feature_impacts alanını güncelliyoruz. API katmanı bu alana feature_impacts listesini
+        #erişmek istiyor. Çünkü API'den gelen response'un içinde feature_impacts
+        #alanı da olmalı. Bu satırda aslında pydantic nesnesini güncellemiş oluyoruz.
+    
         # Feature impacts'i llm_output nesnesine de ekle (API'de erişilebilsin)
         llm_output = llm_output.model_copy(update={
             "feature_impacts": [fi.to_dict() for fi in feature_impacts]
         })
+ # model_copy ile yeni bir nesne oluşturuyoruz ve feature_impacts alanını güncelliyoruz.
+        # Eski nesneyi değiştirmek yerine yeni nesne oluşturmak daha güvenli bir yaklaşımdır.
 
         # Eski alanla uyumluluk: llm_explanation = prediction_summary string'i
         llm_explanation = llm_output.prediction_summary
@@ -237,8 +246,9 @@ class DecisionEngine:
         # Gerçek disk/net varsa kullan, yoksa dummy değer (10.0)
         disk_val = disk if disk is not None else 10.0
         net_val  = net  if net  is not None else 10.0
-
+        
         features = np.array([[cpu, ram, disk_val, net_val]], dtype=np.float32)
+        #predict ->     anomali skoru tahmini yapar
         scores = self.trainer.predict(features)
         return float(scores[0])
 
@@ -294,7 +304,7 @@ class DecisionEngine:
         # Feature importance bağlamını prompt'a ekle (max 3-5 satır)
         importance_context = (
             f"\n{feature_importance_text}" if feature_importance_text else ""
-        )
+        )#feature_importance_text nerede oluşuyor ? -> feature_explainer
 
         prompt = (
             f"System: '{agent_id}'. CPU={cpu}%, RAM={ram}%. "
@@ -366,10 +376,12 @@ class DecisionEngine:
             "llm_structured": { risk_level, prediction_summary, ... }
           }
         Bu sayede GET /api/v1/evaluate/latest endpoint'i tam veriyi parse edebilir.
+        parse edebilir-> anlamak, ayrıştırmak anlamına geliyor. 
         """
         import json
         try:
             init_db()
+
             detail_obj = {
                 "agent_id": agent_id,
                 "ysa_score": round(anomaly_score, 4),

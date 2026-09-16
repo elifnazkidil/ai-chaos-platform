@@ -38,7 +38,10 @@ NEDEN HTTP YASAK?
 
 from __future__ import annotations
 
-import re
+import re #regular expression(regex) ->  tut, bir onceki harf, bir onceki harfin 1 ile 10 arasindaki tekrarini yakala()
+#neden re ye ihtiyacımız var ->  toStr formatindaki zamanı doğrulamak için 
+# bu 4 import  sayesinde  metrik verisini dogrulayip domain katmanina aktariyoruz.
+# #Bizim sistemimize (FastAPI'ye) dışarıdaki bir ajandan sürekli metrik verisi akıyor. Bu verinin içinde bir de zaman damgası (timestamp) var.  
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
@@ -52,6 +55,10 @@ from server.usecases.interfaces.metric_repository import MetricRepositoryInterfa
 # RESULT PATTERN: MetricResult
 # Use Case'in execute() metodu dict değil, tip-güvenli nesne döndürür.
 # Bu sayede üst katman result.success, result.id ile erişir.
+# yazım hataları kod çalışmadan önce (IDE tarafından) engelleniyor. Bu, büyük projelerde (Enterprise) çöküşleri engeller
+#dict olsaydi result:{"success":true,"metric_id": "..."} gibi bir yapı kullanmak zorunda kalirdik ve hata yapma olasılığımız artardı
+#succes yazsa bile hata en son anlasilirdi (yazım hatası varsa)->RuntimeError
+
 # ─────────────────────────────────────────────────────────────
 @dataclass
 class MetricResult:
@@ -65,6 +72,9 @@ class MetricResult:
         else:
             print(f"Hata: {result.error_message}")
     """
+    #field nedir -> dict'lerdeki parametreler gibi düşünebilirsin. 
+    #dataclass, bu 4 anahtarın (success, metric_id, agent_id, error_message) her zaman var olacağını garanti eder.
+    #field yazmazsak gizlilik coker.log kayitlarina dict olarak sifre de yazilirdi.
     success: bool
     metric_id: Optional[str] = field(default=None)
     agent_id: Optional[str] = field(default=None)
@@ -116,7 +126,8 @@ class SaveMetricUseCase:
     def __init__(self, repo: MetricRepositoryInterface) -> None:
         """
         :param repo: MetricRepositoryInterface implementasyonu.
-                     Use Case, concrete tipi (SQLite vs Mock) bilmez.
+                     Use Case, concrete(somut) tipi (SQLite vs Mock) bilmez.
+                     concrete nerede? dosya adi: server\infrastructure\adapters\sqlite_metric_repository.py 
         """
         self.repo = repo
 
@@ -167,19 +178,21 @@ class SaveMetricUseCase:
     def _validate_and_parse(self, payload: dict) -> Metric:
         """
         Ham dict'i doğrulayıp Metric entity'sine dönüştürür.
-
+parse ne demek-> bir seyi parcalara ayirip anlamlandirmak.string icindeki zaman verisini datetime formatina cevirmek gibi.
         Doğrulama adımları:
           1. Zorunlu üst-düzey alanlar mevcut mu?
           2. timestamp ISO 8601 formatında mı?
-          3. metrics bir dict mi?
-          4. metrics değerleri numeric mi?
+          3. metrics bir dict mi? (key-value yapısı)
+          4. metrics değerleri numeric mi? (sayısal değerler)
           5. Metric dataclass oluştur (domain validasyonu da çalışır)
 
         :raises InvalidMetricError: Herhangi bir doğrulama başarısız olursa
         """
         # ── 1. Zorunlu alan kontrolü ─────────────────────────
         required_top_level = {"agent_id", "timestamp", "metrics"}
-        missing = required_top_level - payload.keys()
+        missing = required_top_level - payload.keys() 
+        # set farkı: Soldaki kümede olup sağdakinde olmayan elemanlar.
+        
         if missing:
             raise InvalidMetricError(
                 f"Zorunlu alan(lar) eksik: {', '.join(sorted(missing))}"
@@ -239,14 +252,6 @@ class SaveMetricUseCase:
                     f"metrics['{key}'] numeric olmalıdır (int veya float), "
                     f"alınan: {type(val).__name__} = {val!r}"
                 )
-
-        #Domain seviyesinde değerleri kontrol ediyoruz. Eğer değerler
-        #yoksa ya da sayısal değilse burada hata verir.
-        # __post_init__ metodu da burada çalışır.               
-        # cpu/ram aralık kontrolü yapar (0-100) 
-        # Ra    m total gb sıfırdan büyük olmalı
-        # Ram used gb ram total gb den küçük olmalı
-        # Bu değerler yanlışsa burada hata verir.
 
         # ── 7. Metric entity oluştur (domain kuralları da çalışır) ──
         try:
