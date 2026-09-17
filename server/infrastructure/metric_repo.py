@@ -1,3 +1,9 @@
+# ================================================================
+# DEPRECATED: Bu dosya artik aktif olarak kullanilmiyor.
+# Yerine sqlite_metric_repository.py kullanin.
+# Bu dosya geriye donuk uyumluluk icin korunmaktadir.
+# ================================================================
+
 """
 server/infrastructure/metric_repo.py
 

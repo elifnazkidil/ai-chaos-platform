@@ -59,6 +59,13 @@ class FakeMetricRepository(MetricRepositoryInterface):
     def get_latest_metrics(self, limit: int = 50) -> list[Metric]:
         return list(reversed(self.saved))[:limit]
 
+    def get_recent_by_agent(self, agent_id: str, limit: int = 20) -> list[Metric]:
+        agent_metrics = [m for m in self.saved if m.agent_id == agent_id]
+        return list(reversed(agent_metrics))[:limit]
+
+    def count_by_agent(self, agent_id: str) -> int:
+        return sum(1 for m in self.saved if m.agent_id == agent_id)
+
 
 # ─────────────────────────────────────────────────────────────
 # YARDIMCI: Geçerli test payload'u

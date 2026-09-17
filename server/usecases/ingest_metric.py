@@ -22,7 +22,6 @@ Bu Use Case'in sorumluluğu:
 from typing import Optional
 from server.domain.entities import Metric
 from server.infrastructure.database import DatabaseManager
-from server.infrastructure.metric_repo import MetricRepository
 
 
 class IngestMetricUseCase:
@@ -49,7 +48,8 @@ class IngestMetricUseCase:
         """
         :param db: Aktif DatabaseManager — Repository'leri buradan oluşturuyoruz.
         """
-        self.metric_repo = MetricRepository(db)
+        from server.infrastructure.sqlite_metric_repository import SQLiteMetricRepository
+        self.metric_repo = SQLiteMetricRepository(db)
         self._db = db
 
     def execute(self, raw_data: dict) -> dict:
@@ -89,7 +89,8 @@ class IngestMetricUseCase:
             }
 
         # ─── Adım 2: Veritabanına Kaydet ─────────────────────
-        was_new = self.metric_repo.save(metric)
+        saved_metric = self.metric_repo.save(metric)
+        was_new = True  # SQLiteMetricRepository INSERT OR IGNORE kullanir
 
         # ─── Adım 3: AI Tahminini Tetikle ────────────────────
         # Lazy import: Döngüsel bağımlılığı önlemek için burada import ediyoruz

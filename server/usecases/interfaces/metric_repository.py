@@ -76,3 +76,24 @@ class MetricRepositoryInterface(ABC):
         :return: Metric nesnelerinden oluşan bir liste
         """
         ...
+
+    @abstractmethod
+    def get_recent_by_agent(self, agent_id: str, limit: int = 20) -> list[Metric]:
+        """
+        Belirli bir ajana ait en son N metrigi doner (en yeni once).
+
+        :param agent_id: Hangi ajanin metrikleri isteniyor
+        :param limit: Kac kayit donsun (varsayilan: 20)
+        :return: Metric listesi
+        """
+        ...
+
+    @abstractmethod
+    def count_by_agent(self, agent_id: str) -> int:
+        """
+        Bir ajana ait toplam metrik sayisini doner.
+
+        :param agent_id: Ajan kimligi
+        :return: Toplam metrik sayisi
+        """
+        ...

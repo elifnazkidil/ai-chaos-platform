@@ -17,7 +17,6 @@ Domain ↔ AI ↔ Infrastructure arasındaki köprüdür.
 from typing import List
 from server.domain.entities import Metric
 from server.infrastructure.database import DatabaseManager
-from server.infrastructure.metric_repo import MetricRepository
 from ai.leak_detector import MemoryLeakDetector
 
 
@@ -44,7 +43,8 @@ class PredictLeakUseCase:
         """
         :param db: Aktif DatabaseManager — MetricRepository oluşturmak için
         """
-        self.metric_repo = MetricRepository(db)
+        from server.infrastructure.sqlite_metric_repository import SQLiteMetricRepository
+        self.metric_repo = SQLiteMetricRepository(db)
         self.detector = MemoryLeakDetector(
             window_size=WINDOW_SIZE,
             min_slope_threshold=0.05  # Saniyede %0.05 RAM artışı → sızıntı sayılır

@@ -8,7 +8,8 @@ Bu sayede dışarıdan şöyle import edilebilir:
 """
 
 from server.infrastructure.database import DatabaseManager, get_db
-from server.infrastructure.metric_repo import MetricRepository
+# [DEPRECATED] metric_repo.py artik kullanilmiyor, sqlite_metric_repository.py kullanin
+# from server.infrastructure.metric_repo import MetricRepository
 from server.infrastructure.work_order_repo import WorkOrderRepository
 
 __all__ = ["DatabaseManager", "get_db", "MetricRepository", "WorkOrderRepository"]
