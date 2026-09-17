@@ -107,7 +107,6 @@ class TestWeek1Integration(unittest.TestCase):
     # ═══════════════════════════════════════════════════════
     # ✅ TEST 3: Metrik Okuma (GET)
     # ═══════════════════════════════════════════════════════
-    @pytest.mark.xfail(reason="Asynchronous background tasks change response code to 202")
     def test_03_get_latest_metrics(self):
         """
         GET /api/v1/metrics/latest → Kaydedilen verileri oku.

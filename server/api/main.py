@@ -7,8 +7,8 @@ Gelen istekleri (HTTP) alır, Use Case'lere iletir ve HTTP
 yanıtlarına çevirir.
 
 python -m uvicorn server.api.main:app --reload
-python -m streamlit run dashboard\app.py
-python agent\monitor.py
+python -m streamlit run dashboard/app.py
+python agent/monitor.py
 
 
 İş Akışı (Pipeline):
@@ -62,15 +62,22 @@ from server.domain.exceptions import InvalidMetricError, RepositoryError
 executor = ProcessPoolExecutor(max_workers=2)
 
 # FastAPI uygulamasını oluştur
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Uygulama basladiginda calisir
+    yield
+    # Shutdown: Uygulama kapandiginda calisir
+    executor.shutdown(wait=False)
+    db_manager.close()
+
 app = FastAPI(
     title="AI Chaos Platform API",
     description="Agent metriklerini toplayan ve analiz eden platform.",
     version="1.0.0",
+    lifespan=lifespan,
 )
-
-@app.on_event("shutdown")
-def shutdown_event():
-    executor.shutdown(wait=False)
 
 # CORS (Cross-Origin Resource Sharing) Ayarları
 # Dashboard'un bu API ile konuşabilmesi için (farklı portlarda çalışacaklar)

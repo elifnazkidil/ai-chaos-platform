@@ -140,5 +140,7 @@ class IngestMetricUseCase:
             ram_percent=float(raw_data["ram_percent"]),
             ram_used_gb=float(raw_data["ram_used_gb"]),
             ram_total_gb=float(raw_data["ram_total_gb"]),
+            disk_percent=float(raw_data.get("disk_percent", 0.0)),
+            net_mbps=float(raw_data.get("net_mbps", 0.0)),
         )
         # Not: metric_id ve timestamp otomatik üretilir (entities.py'deki field defaults)

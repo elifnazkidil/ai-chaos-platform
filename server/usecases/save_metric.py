@@ -127,7 +127,7 @@ class SaveMetricUseCase:
         """
         :param repo: MetricRepositoryInterface implementasyonu.
                      Use Case, concrete(somut) tipi (SQLite vs Mock) bilmez.
-                     concrete nerede? dosya adi: server\infrastructure\adapters\sqlite_metric_repository.py 
+                     concrete nerede? dosya adi: server/infrastructure/adapters/sqlite_metric_repository.py 
         """
         self.repo = repo
 
