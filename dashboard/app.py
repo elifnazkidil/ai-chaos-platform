@@ -57,7 +57,7 @@ def get_metrics_from_api(limit: int = 100) -> pd.DataFrame:
             data = resp.json().get("data", [])
             if data:
                 df = pd.DataFrame(data)
-                df["timestamp"] = pd.to_datetime(df["timestamp"])
+                df["timestamp"] = pd.to_datetime(df["timestamp"], format="ISO8601")
                 return df
     except requests.exceptions.RequestException:
         pass  # API kapalı, DB'ye düş
