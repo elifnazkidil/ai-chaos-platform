@@ -6,9 +6,10 @@ API Katmanı — FastAPI Uygulaması
 Gelen istekleri (HTTP) alır, Use Case'lere iletir ve HTTP
 yanıtlarına çevirir.
 
-python -m uvicorn server.api.main:app --reload
-python -m streamlit run dashboard/app.py
-python agent/monitor.py
+python -m uvicorn server.api.main:app --reload           1. Terminal: Backend (FastAPI Sunucusu)
+python -m streamlit run dashboard/app.py                     
+python agent/monitor.py                                   Bilgisayarının CPU, RAM, Disk verilerini gerçek zamanlı toplayıp sunucuya gönderen daemondur.
+python agent/chaos.py --target memory --scenario fast
 
 
 İş Akışı (Pipeline):
@@ -131,11 +132,22 @@ decision_engine_uc = DecisionEngine()
 # ── Rotalar (Endpoints) ─────────────────────────────────
 
 def process_metric_task(payload: Dict[str, Any]):
-    """Arka planda metriği işler."""
+    """Arka planda metriği işler, bellek sızıntısı varsa otomatik ERP iş emri üretir."""
     try:
         save_metric_uc.execute(payload)
+
+        agent_id = payload.get("agent_id")
+        if agent_id:
+            from server.usecases.predict_leak import PredictLeakUseCase
+            from server.usecases.generate_work_order import GenerateWorkOrderUseCase
+
+            predictor = PredictLeakUseCase(db_manager)
+            prediction = predictor.execute(agent_id=agent_id)
+            if prediction.get("is_leak"):
+                wo_creator = GenerateWorkOrderUseCase(db_manager)
+                wo_creator.execute(agent_id=agent_id, prediction=prediction)
     except Exception as e:
-        print(f"[BACKGROUND TASK ERROR] Metrik kaydedilemedi: {e}")
+        print(f"[BACKGROUND TASK ERROR] Metrik işleme hatası: {e}")
 
 @app.post("/api/v1/metrics", status_code=202)
 @log_execution_time

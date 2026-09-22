@@ -78,12 +78,21 @@ class GenerateWorkOrderUseCase:
         risk_level_str = prediction.get("risk_level", "NORMAL")
 
         # String'i RiskLevel Enum'una dönüştür
-        # Bilinmeyen risk_level string gelirse güvenli varsayılan: NORMAL
         try:
             risk_level = RiskLevel(risk_level_str)
         except ValueError:
-            # "YETERSİZ VERİ" veya tanımlanmamış bir değer gelirse iş emri açma
-            return None
+            normalized = risk_level_str.replace("KRITIK", "KRİTİK").replace("YUKSEK", "YÜKSEK")
+            try:
+                risk_level = RiskLevel(normalized)
+            except ValueError:
+                if "CRITICAL" in risk_level_str or "KRİTİK" in risk_level_str:
+                    risk_level = RiskLevel.CRITICAL
+                elif "HIGH" in risk_level_str or "YÜKSEK" in risk_level_str:
+                    risk_level = RiskLevel.HIGH
+                elif "MEDIUM" in risk_level_str or "ORTA" in risk_level_str:
+                    risk_level = RiskLevel.MEDIUM
+                else:
+                    return None
 
         if risk_level not in TRIGGER_RISK_LEVELS:
             return None

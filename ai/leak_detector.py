@@ -206,9 +206,9 @@ class MemoryLeakDetector:
         if not is_leak:
             risk_level = "NORMAL"
         elif estimated_seconds and estimated_seconds < 60:
-            risk_level = "KRITIK (CRITICAL)"
+            risk_level = "KRİTİK (CRITICAL)"
         elif estimated_seconds and estimated_seconds < 300:
-            risk_level = "YUKSEK (HIGH)"
+            risk_level = "YÜKSEK (HIGH)"
         else:
             risk_level = "ORTA (MEDIUM)"
             #-- risk_level: Algilanan risk seviyesi: NORMAL, KRITIK (CRITICAL), YUKSEK (HIGH), ORTA (MEDIUM).
