@@ -28,6 +28,7 @@ from pathlib import Path
 from ai.neural_network import AnomalyTrainer
 from ai.explainability import FeatureExplainer
 from server.infrastructure.llm_adapter import generate_structured
+from server.domain.llm_schema import LLMDecisionOutput
 from agent.telegram_notifier import send_telegram_message
 from server.usecases.self_healing import log_event, init_db
 
@@ -48,7 +49,7 @@ ACTION_TABLE = [
     (0.5, "ALERT",         "Uyarı bildirimi gönder"),
     (0.7, "SCALE_UP",      "Kaynak kapasitesini artır"),
     (0.9, "RESTART",       "İlgili servisi yeniden başlat"),
-    (1.1, "KILL_PROCESS",  "Sızıntı yapan prosesi sonlandır"),  # 1.1 = her zaman yakalanır
+    # >= 0.9 olan durumlar _select_action fallback'i (KILL_PROCESS) tarafından yakalanır
 ]
 #Bu tablo ai eğitim süreci (Fine-Tuning) değil, ai'in ürettiği sonuçları güvenli bir şekilde dizginlemek 
 #ve kontrol altında tutmak için yazılmış katı bir güvenlik kilididir (Guardrail/Rule Engine).
@@ -299,8 +300,6 @@ class DecisionEngine:
         Returns:
             LLMDecisionOutput: Structured output (LLM veya fallback)
         """
-        from server.domain.llm_schema import LLMDecisionOutput
-
         # Feature importance bağlamını prompt'a ekle (max 3-5 satır)
         importance_context = (
             f"\n{feature_importance_text}" if feature_importance_text else ""
@@ -386,7 +385,7 @@ class DecisionEngine:
                 "agent_id": agent_id,
                 "ysa_score": round(anomaly_score, 4),
                 "action": action,
-                "explanation": explanation[:300] if explanation else "",
+                "explanation": explanation or "",
                 "llm_structured": llm_structured or {},
             }
             log_event("AI_DECISION", json.dumps(detail_obj, ensure_ascii=False))
