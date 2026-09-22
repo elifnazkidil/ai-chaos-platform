@@ -131,6 +131,23 @@ class GenerateWorkOrderUseCase:
         # ─── Veritabanına Kaydet ──────────────────────────────
         self.work_order_repo.save(work_order)
 
+        # ─── Telegram Bildirimi Gönder ────────────────────────
+        try:
+            from agent.telegram_notifier import send_telegram_message
+            tg_msg = (
+                f"🚨 <b>YENİ ERP İŞ EMRİ AÇILDI!</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"<b>İş Emri ID:</b> {work_order.work_order_id}\n"
+                f"<b>Ajan:</b> {agent_id}\n"
+                f"<b>Risk Seviyesi:</b> {risk_level.value}\n"
+                f"<b>RAM:</b> %{current_ram:.1f} | <b>Tahmini Çöküş:</b> {work_order.urgency_minutes} dk\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"<i>{work_order.description}</i>"
+            )
+            send_telegram_message(tg_msg)
+        except Exception as e:
+            print(f"[TELEGRAM WORK ORDER HATA] {e}")
+
         # ─── Sonucu Döndür ────────────────────────────────────
         result = work_order.to_dict()
         result["already_existed"] = False
