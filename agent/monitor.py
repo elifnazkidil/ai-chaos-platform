@@ -115,7 +115,7 @@ if __name__ == "__main__":
                 requests.post("http://127.0.0.1:8000/api/v1/metrics", json=payload_metrics, timeout=2)
                 
                 # ─── API ENTEGRASYONU (Sadece riskli durumlarda AI tetiklemesi) ───
-                if metrics['cpu_yuzde'] > 85.0 or metrics['ram_yuzde'] > 80.0:
+                if metrics['cpu_yuzde'] > 70.0 or metrics['ram_yuzde'] > 70.0:
                     print(f"[!] Yüksek kaynak kullanımı tespit edildi. AI Decision Engine'e gönderiliyor...")
                     # Evaluate endpoint'i düz (flat) payload bekliyor olabilir
                     payload_eval = {

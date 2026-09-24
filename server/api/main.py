@@ -6,18 +6,11 @@ API Katmanı — FastAPI Uygulaması
 Gelen istekleri (HTTP) alır, Use Case'lere iletir ve HTTP
 yanıtlarına çevirir.
 
-python -m uvicorn server.api.main:app --reload           1. Terminal: Backend (FastAPI Sunucusu)
+python -m uvicorn server.api.main:app --reload            1. Terminal: Backend (FastAPI Sunucusu)
 python -m streamlit run dashboard/app.py                     
 python agent/monitor.py                                   Bilgisayarının CPU, RAM, Disk verilerini gerçek zamanlı toplayıp sunucuya gönderen daemondur.
-python agent/chaos.py --target memory --scenario fast
+python agent/chaos.py --target memory --scenario fast    
 
-
-İş Akışı (Pipeline):
-  1. Ajan (chaos.py/monitor.py) metrik toplar ve POST /api/v1/metrics'e gönderir
-  2. main.py gelen veriyi doğrular (Exception Handlers)
-  3. Veriler SaveMetricUseCase üzerinden SQLite'a yazılır
-  4. GET /api/v1/predictions çağrıldığında YSA modeli tahminde bulunur
-  5. Sonuçlar JSON olarak Streamlit Dashboard'a sunulur
 """
 import asyncio
 from concurrent.futures import ProcessPoolExecutor
@@ -25,20 +18,10 @@ from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
 # Exception handler'larda isteğin detaylarina erismek icin parametre olarak alinir.
 
 
-from fastapi.middleware.cors import CORSMiddleware   
-
-from fastapi.responses import JSONResponse  
-# HTTP yanıtini JSON formatinda döndürmek icin kullanilan özel yaniit sinifi.
-#   Normalde FastAPI otomatik JSON döner, ama exception_handler içinde kendi status_code ve
-#   content'imizi belirlemek istediğimizde JSONResponse'u elle oluşturuyoruz.
-#   Örn: return JSONResponse(status_code=400, content={"error": "Geçersiz veri"})
-
+from fastapi.middleware.cors import CORSMiddleware
 from server.api.decorators import log_execution_time
-
 from typing import Dict, Any
-
 from server.infrastructure.database import get_db
-
 from server.infrastructure.sqlite_metric_repository import SQLiteMetricRepository
 # ─ SQLiteMetricRepository : Metrik verilerini(metric gpu85%) SQLite veritabanına kaydeden/okuyan somut sınıf.
 #   Repository Pattern(veriyi kaydeder nasil kaydettigini bilmez) 'in SQLite için yazılmış implementasyonu. INSERT, SELECT gibi SQL işlerini yapar.
@@ -131,23 +114,65 @@ decision_engine_uc = DecisionEngine()
 
 # ── Rotalar (Endpoints) ─────────────────────────────────
 
+# ── AI Pipeline Rate Limiter ─────────────────────────────
+import time as _time_module
+_last_decision_time = 0.0
+_DECISION_COOLDOWN = 30  # Decision Engine en fazla 30 saniyede bir tetiklenir
+
 def process_metric_task(payload: Dict[str, Any]):
-    """Arka planda metriği işler, bellek sızıntısı varsa otomatik ERP iş emri üretir."""
+    """
+    Arka planda metriği işler ve tam AI pipeline'ı tetikler:
+      1. Metriği DB'ye kaydet
+      2. PredictLeak → TTF hesapla → sızıntı varsa Work Order üret
+      3. Decision Engine → YSA skoru + LLM açıklama + Telegram (rate-limited)
+    """
+    global _last_decision_time
     try:
+        # ── Adım 1: Metriği Kaydet (mevcut davranış) ───────────
         save_metric_uc.execute(payload)
 
-        agent_id = payload.get("agent_id")
-        if agent_id:
-            from server.usecases.predict_leak import PredictLeakUseCase
-            from server.usecases.generate_work_order import GenerateWorkOrderUseCase
+        # ── Adım 2: AI Tahmin Pipeline (PredictLeak → Work Order) ──
+        agent_id = payload.get("agent_id", "unknown")
+        metrics_data = payload.get("metrics", {})
+        cpu = float(metrics_data.get("cpu_percent", 0.0))
+        ram = float(metrics_data.get("ram_percent", 0.0))
 
-            predictor = PredictLeakUseCase(db_manager)
-            prediction = predictor.execute(agent_id=agent_id)
-            if prediction.get("is_leak"):
-                wo_creator = GenerateWorkOrderUseCase(db_manager)
-                wo_creator.execute(agent_id=agent_id, prediction=prediction)
+        from server.usecases.predict_leak import PredictLeakUseCase
+        predictor = PredictLeakUseCase(db_manager)
+        prediction = predictor.execute(agent_id=agent_id)
+
+        # Sızıntı tespit edildi → ERP İş Emri oluştur (TTF burada hesaplanır)
+        if prediction.get("is_leak"):
+            from server.usecases.generate_work_order import GenerateWorkOrderUseCase
+            wo_creator = GenerateWorkOrderUseCase(db_manager)
+            wo_result = wo_creator.execute(agent_id=agent_id, prediction=prediction)
+            if wo_result and not wo_result.get("already_existed"):
+                print(f"[AI PIPELINE] !!! YENI IS EMRI: {wo_result.get('work_order_id', '?')} | TTF: {prediction.get('estimated_seconds_to_oom', 'N/A')}sn")
+
+        # ── Adım 3: Decision Engine (LLM + Telegram) ────────────
+        # Tetikleme: Absolut eşik VEYA PredictLeak sızıntı algıladı
+        should_evaluate = (cpu > 70.0 or ram > 70.0) or prediction.get("is_leak", False)
+
+        if should_evaluate:
+            now = _time_module.time()
+            if now - _last_decision_time >= _DECISION_COOLDOWN:
+                _last_decision_time = now
+                try:
+                    result = decision_engine_uc.evaluate(
+                        cpu=cpu,
+                        ram=ram,
+                        ram_used_gb=float(metrics_data.get("ram_used_gb", 0.0)),
+                        ram_total_gb=float(metrics_data.get("ram_total_gb", 16.0)),
+                        agent_id=agent_id,
+                        disk=metrics_data.get("disk_percent"),
+                        net=metrics_data.get("net_mbps"),
+                    )
+                    print(f"[AI PIPELINE] YSA Skor: {result.get('ysa_score', 'N/A')} \u2192 Aksiyon: {result.get('action', 'N/A')}")
+                except Exception as e:
+                    print(f"[AI PIPELINE] Decision Engine hatası: {e}")
+
     except Exception as e:
-        print(f"[BACKGROUND TASK ERROR] Metrik işleme hatası: {e}")
+        print(f"[BACKGROUND TASK ERROR] Metrik işlenemedi: {e}")
 
 @app.post("/api/v1/metrics", status_code=202)
 @log_execution_time
@@ -369,6 +394,46 @@ async def get_events(limit: int = 100):
 # ── Gün 27: Kaos Kontrol Endpoint'leri ─────────────────────────
 import threading
 _chaos_stop_event = threading.Event()
+_chaos_monitor_thread = None
+
+def _chaos_monitor_loop():
+    """
+    Kaos testi sırasında metrikleri otomatik toplayıp AI pipeline'ına besler.
+    Bu sayede monitor.py çalışmıyor olsa bile kaos testi sırasında
+    YSA tahminleri, TTF güncellemeleri ve Telegram bildirimleri çalışır.
+    """
+    from agent.monitor import get_system_metrics
+
+    print("[CHAOS MONITOR] Otomatik metrik toplama basladi...")
+    while not _chaos_stop_event.is_set():
+        try:
+            metrics = get_system_metrics()
+            payload = {
+                "agent_id": "server-prod-01",
+                "timestamp": metrics['zaman'].replace(' ', 'T'),
+                "metrics": {
+                    "cpu_percent": metrics['cpu_yuzde'],
+                    "ram_percent": metrics['ram_yuzde'],
+                    "ram_used_gb": metrics['ram_kullanilan_gb'],
+                    "ram_total_gb": metrics['ram_toplam_gb'],
+                    "disk_percent": metrics['disk_yuzde'],
+                    "net_mbps": metrics['net_mbps'],
+                }
+            }
+            process_metric_task(payload)
+        except Exception as e:
+            print(f"[CHAOS MONITOR ERROR] {e}")
+
+    print("[CHAOS MONITOR] Metrik toplama durduruldu.")
+
+
+def _start_chaos_monitor():
+    """Kaos monitör thread'ini başlatır (zaten çalışıyorsa yeniden başlatmaz)."""
+    global _chaos_monitor_thread
+    if _chaos_monitor_thread is not None and _chaos_monitor_thread.is_alive():
+        return
+    _chaos_monitor_thread = threading.Thread(target=_chaos_monitor_loop, daemon=True)
+    _chaos_monitor_thread.start()
 
 @app.post("/api/v1/chaos/start-leak")
 async def start_memory_leak(background_tasks: BackgroundTasks):
@@ -388,7 +453,8 @@ async def start_memory_leak(background_tasks: BackgroundTasks):
 
     t = threading.Thread(target=run_leak, daemon=True)
     t.start()
-    return {"success": True, "message": "Bellek sızıntısı simülasyonu başlatıldı (60 saniye)."}
+    _start_chaos_monitor()
+    return {"success": True, "message": "Bellek sızıntısı simülasyonu başlatıldı (60 saniye). Otomatik AI izleme aktif."}
 
 
 @app.post("/api/v1/chaos/start-cpu")
@@ -409,7 +475,8 @@ async def start_cpu_stress(background_tasks: BackgroundTasks):
 
     t = threading.Thread(target=run_cpu, daemon=True)
     t.start()
-    return {"success": True, "message": "CPU stress testi başlatıldı (30 saniye)."}
+    _start_chaos_monitor()
+    return {"success": True, "message": "CPU stress testi başlatıldı (30 saniye). Otomatik AI izleme aktif."}
 
 
 @app.post("/api/v1/chaos/stop")
